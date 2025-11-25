@@ -104,7 +104,7 @@ module system_config_register #(
     .DATA_W        (32)
   ) axil_reg_inst (
     .s_axil_awvalid (s_axil_awvalid),
-    .s_axil_awaddr  (s_axil_awaddr),
+    .s_axil_awaddr  (s_axil_awaddr[C_ADDR_W-1:0]),
     .s_axil_awready (s_axil_awready),
     .s_axil_wvalid  (s_axil_wvalid),
     .s_axil_wdata   (s_axil_wdata),
@@ -113,7 +113,7 @@ module system_config_register #(
     .s_axil_bresp   (s_axil_bresp),
     .s_axil_bready  (s_axil_bready),
     .s_axil_arvalid (s_axil_arvalid),
-    .s_axil_araddr  (s_axil_araddr),
+    .s_axil_araddr  (s_axil_araddr[C_ADDR_W-1:0]),
     .s_axil_arready (s_axil_arready),
     .s_axil_rvalid  (s_axil_rvalid),
     .s_axil_rdata   (s_axil_rdata),
@@ -201,11 +201,15 @@ module system_config_register #(
 
   // Shell reset register (write-only)
   //
-  // 31:3  - reserved
-  // 2     - reset for the CMAC subsystem CMAC1
-  // 1     - reset for the CMAC subsystem CMAC0
+  // 31:10 - reserved
+  // 9     - reset for the adapter of CMAC1
+  // 8     - reset for the CMAC subsystem CMAC1
+  // 7:6   - reserved
+  // 5     - reset for the adapter of CMAC0
+  // 4     - reset for the CMAC subsystem CMAC0
+  // 3:2   - reserved
+  // 1     - reset for the RDMA subsystem
   // 0     - reset for the QDMA subsystem
-  // 
   // Writing 1 to a bit of this register initiates a submodule-level reset in
   // the shell logic, which lasts until the corresponding submodule is out of
   // reset.  Mapping between bits and submodules are as follows.

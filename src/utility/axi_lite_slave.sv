@@ -59,7 +59,7 @@ module axi_lite_slave #(
     .DATA_W        (32)
   ) axil_reg_inst (
     .s_axil_awvalid (s_axil_awvalid),
-    .s_axil_awaddr  (s_axil_awaddr),
+    .s_axil_awaddr  (s_axil_awaddr[REG_ADDR_W-1:0]),
     .s_axil_awready (s_axil_awready),
     .s_axil_wvalid  (s_axil_wvalid),
     .s_axil_wdata   (s_axil_wdata),
@@ -68,7 +68,7 @@ module axi_lite_slave #(
     .s_axil_bresp   (s_axil_bresp),
     .s_axil_bready  (s_axil_bready),
     .s_axil_arvalid (s_axil_arvalid),
-    .s_axil_araddr  (s_axil_araddr),
+    .s_axil_araddr  (s_axil_araddr[REG_ADDR_W-1:0]),
     .s_axil_arready (s_axil_arready),
     .s_axil_rvalid  (s_axil_rvalid),
     .s_axil_rdata   (s_axil_rdata),

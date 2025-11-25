@@ -34,9 +34,13 @@
 // --------------------------------------------------
 //    0x10000  |  0x11FFF  |  Sysmon block
 // --------------------------------------------------
-//   0x100000  |  0x1FFFFF |  Box0 @ 250MHz
+//    0x14000  |  0x16FFF  |  QDMA AXI Bridge CSR
 // --------------------------------------------------
-//   0x200000  |  0x2FFFFF |  Box1 @ 322MHz
+//   0x200000  |  0x3FFFFF |  RDMA subsystem
+// --------------------------------------------------
+//   0x500000  |  0x5FFFFF |  Box0 @ 250MHz
+// --------------------------------------------------
+//   0x400000  |  0x4FFFFF |  Box1 @ 322MHz
 // --------------------------------------------------
 
 `include "open_nic_shell_macros.vh"
@@ -95,6 +99,23 @@ module system_config_address_map #(
   input                   [1:0] m_axil_qdma_rresp,
   output                        m_axil_qdma_rready,
 
+  output                        m_axil_qdma_csr_awvalid,
+  output                 [31:0] m_axil_qdma_csr_awaddr,
+  input                         m_axil_qdma_csr_awready,
+  output                        m_axil_qdma_csr_wvalid,
+  output                 [31:0] m_axil_qdma_csr_wdata,
+  input                         m_axil_qdma_csr_wready,
+  input                         m_axil_qdma_csr_bvalid,
+  input                   [1:0] m_axil_qdma_csr_bresp,
+  output                        m_axil_qdma_csr_bready,
+  output                        m_axil_qdma_csr_arvalid,
+  output                 [31:0] m_axil_qdma_csr_araddr,
+  input                         m_axil_qdma_csr_arready,
+  input                         m_axil_qdma_csr_rvalid,
+  input                  [31:0] m_axil_qdma_csr_rdata,
+  input                   [1:0] m_axil_qdma_csr_rresp,
+  output                        m_axil_qdma_csr_rready,
+
   output    [NUM_CMAC_PORT-1:0] m_axil_adap_awvalid,
   output [32*NUM_CMAC_PORT-1:0] m_axil_adap_awaddr,
   input     [NUM_CMAC_PORT-1:0] m_axil_adap_awready,
@@ -128,6 +149,23 @@ module system_config_address_map #(
   input  [32*NUM_CMAC_PORT-1:0] m_axil_cmac_rdata,
   input   [2*NUM_CMAC_PORT-1:0] m_axil_cmac_rresp,
   output    [NUM_CMAC_PORT-1:0] m_axil_cmac_rready,
+
+  output                        m_axil_rdma_awvalid,
+  output                 [31:0] m_axil_rdma_awaddr,
+  input                         m_axil_rdma_awready,
+  output                        m_axil_rdma_wvalid,
+  output                 [31:0] m_axil_rdma_wdata,
+  input                         m_axil_rdma_wready,
+  input                         m_axil_rdma_bvalid,
+  input                   [1:0] m_axil_rdma_bresp,
+  output                        m_axil_rdma_bready,
+  output                        m_axil_rdma_arvalid,
+  output                 [31:0] m_axil_rdma_araddr,
+  input                         m_axil_rdma_arready,
+  input                         m_axil_rdma_rvalid,
+  input                  [31:0] m_axil_rdma_rdata,
+  input                   [1:0] m_axil_rdma_rresp,
+  output                        m_axil_rdma_rready,
 
   output                        m_axil_box0_awvalid,
   output                 [31:0] m_axil_box0_awaddr,
@@ -184,7 +222,7 @@ module system_config_address_map #(
   input                         aresetn
 );
 
-  localparam C_NUM_SLAVES  = 9;
+  localparam C_NUM_SLAVES  = 11;
 
   localparam C_SCFG_INDEX  = 0;
   localparam C_QDMA_INDEX  = 1;
@@ -193,8 +231,10 @@ module system_config_address_map #(
   localparam C_CMAC1_INDEX = 4;
   localparam C_ADAP1_INDEX = 5;
   localparam C_SMON_INDEX  = 6;
-  localparam C_BOX1_INDEX  = 7;
-  localparam C_BOX0_INDEX  = 8;
+  localparam C_QCSR_INDEX  = 7;
+  localparam C_RDMA_INDEX  = 8;
+  localparam C_BOX1_INDEX  = 9;
+  localparam C_BOX0_INDEX  = 10;
 
   localparam C_SCFG_BASE_ADDR  = 32'h0;
   localparam C_QDMA_BASE_ADDR  = 32'h01000;
@@ -203,8 +243,10 @@ module system_config_address_map #(
   localparam C_CMAC1_BASE_ADDR = 32'h0C000;
   localparam C_ADAP1_BASE_ADDR = 32'h0F000;
   localparam C_SMON_BASE_ADDR  = 32'h10000;  // 14 bits
-  localparam C_BOX1_BASE_ADDR  = 32'h200000; // 20 bits
-  localparam C_BOX0_BASE_ADDR  = 32'h100000; // 20 bits
+  localparam C_QCSR_BASE_ADDR  = 32'h14000;  // 14 bits
+  localparam C_RDMA_BASE_ADDR  = 32'h200000; // 21 bits
+  localparam C_BOX1_BASE_ADDR  = 32'h500000; // 20 bits
+  localparam C_BOX0_BASE_ADDR  = 32'h400000; // 20 bits
 
   wire                [31:0] axil_scfg_awaddr;
   wire                [31:0] axil_scfg_araddr;
@@ -224,6 +266,10 @@ module system_config_address_map #(
   wire                [31:0] axil_box0_araddr;
   wire                [31:0] axil_smon_awaddr;
   wire                [31:0] axil_smon_araddr;
+  wire                [31:0] axil_qcsr_awaddr;
+  wire                [31:0] axil_qcsr_araddr;
+  wire                [31:0] axil_rdma_awaddr;
+  wire                [31:0] axil_rdma_araddr;
 
   wire  [1*C_NUM_SLAVES-1:0] axil_awvalid;
   wire [32*C_NUM_SLAVES-1:0] axil_awaddr;
@@ -247,6 +293,8 @@ module system_config_address_map #(
   assign axil_scfg_araddr                      = axil_araddr[`getvec(32, C_SCFG_INDEX)] - C_SCFG_BASE_ADDR;
   assign axil_qdma_awaddr                      = axil_awaddr[`getvec(32, C_QDMA_INDEX)] - C_QDMA_BASE_ADDR;
   assign axil_qdma_araddr                      = axil_araddr[`getvec(32, C_QDMA_INDEX)] - C_QDMA_BASE_ADDR;
+  assign axil_qcsr_awaddr                      = axil_awaddr[`getvec(32, C_QCSR_INDEX)] - C_QCSR_BASE_ADDR;
+  assign axil_qcsr_araddr                      = axil_araddr[`getvec(32, C_QCSR_INDEX)] - C_QCSR_BASE_ADDR;
   assign axil_cmac0_awaddr                     = axil_awaddr[`getvec(32, C_CMAC0_INDEX)] - C_CMAC0_BASE_ADDR;
   assign axil_cmac0_araddr                     = axil_araddr[`getvec(32, C_CMAC0_INDEX)] - C_CMAC0_BASE_ADDR;
   assign axil_adap0_awaddr                     = axil_awaddr[`getvec(32, C_ADAP0_INDEX)] - C_ADAP0_BASE_ADDR;
@@ -255,8 +303,10 @@ module system_config_address_map #(
   assign axil_cmac1_araddr                     = axil_araddr[`getvec(32, C_CMAC1_INDEX)] - C_CMAC1_BASE_ADDR;
   assign axil_adap1_awaddr                     = axil_awaddr[`getvec(32, C_ADAP1_INDEX)] - C_ADAP1_BASE_ADDR;
   assign axil_adap1_araddr                     = axil_araddr[`getvec(32, C_ADAP1_INDEX)] - C_ADAP1_BASE_ADDR;
-  assign axil_smon_awddr                       = axil_awaddr[`getvec(32, C_SMON_INDEX)]  - C_SMON_BASE_ADDR;
+  assign axil_smon_awaddr                      = axil_awaddr[`getvec(32, C_SMON_INDEX)]  - C_SMON_BASE_ADDR;
   assign axil_smon_araddr                      = axil_araddr[`getvec(32, C_SMON_INDEX)] - C_SMON_BASE_ADDR;
+  assign axil_rdma_awaddr                      = axil_awaddr[`getvec(32, C_RDMA_INDEX)] - C_RDMA_BASE_ADDR;
+  assign axil_rdma_araddr                      = axil_araddr[`getvec(32, C_RDMA_INDEX)] - C_RDMA_BASE_ADDR;
   assign axil_box1_awaddr                      = axil_awaddr[`getvec(32, C_BOX1_INDEX)] - C_BOX1_BASE_ADDR;
   assign axil_box1_araddr                      = axil_araddr[`getvec(32, C_BOX1_INDEX)] - C_BOX1_BASE_ADDR;
   assign axil_box0_awaddr                      = axil_awaddr[`getvec(32, C_BOX0_INDEX)] - C_BOX0_BASE_ADDR;
@@ -295,6 +345,23 @@ module system_config_address_map #(
   assign axil_rdata[`getvec(32, C_QDMA_INDEX)] = m_axil_qdma_rdata;
   assign axil_rresp[`getvec(2, C_QDMA_INDEX)]  = m_axil_qdma_rresp;
   assign m_axil_qdma_rready                    = axil_rready[C_QDMA_INDEX];
+
+  assign m_axil_qdma_csr_awvalid               = axil_awvalid[C_QCSR_INDEX];
+  assign m_axil_qdma_csr_awaddr                = axil_qcsr_awaddr;
+  assign axil_awready[C_QCSR_INDEX]            = m_axil_qdma_csr_awready;
+  assign m_axil_qdma_csr_wvalid                = axil_wvalid[C_QCSR_INDEX];
+  assign m_axil_qdma_csr_wdata                 = axil_wdata[`getvec(32, C_QCSR_INDEX)];
+  assign axil_wready[C_QCSR_INDEX]             = m_axil_qdma_csr_wready;
+  assign axil_bvalid[C_QCSR_INDEX]             = m_axil_qdma_csr_bvalid;
+  assign axil_bresp[`getvec(2, C_QCSR_INDEX)]  = m_axil_qdma_csr_bresp;
+  assign m_axil_qdma_csr_bready                = axil_bready[C_QCSR_INDEX];
+  assign m_axil_qdma_csr_arvalid               = axil_arvalid[C_QCSR_INDEX];
+  assign m_axil_qdma_csr_araddr                = axil_qcsr_araddr;
+  assign axil_arready[C_QCSR_INDEX]            = m_axil_qdma_csr_arready;
+  assign axil_rvalid[C_QCSR_INDEX]             = m_axil_qdma_csr_rvalid;
+  assign axil_rdata[`getvec(32, C_QCSR_INDEX)] = m_axil_qdma_csr_rdata;
+  assign axil_rresp[`getvec(2, C_QCSR_INDEX)]  = m_axil_qdma_csr_rresp;
+  assign m_axil_qdma_csr_rready                = axil_rready[C_QCSR_INDEX];
 
   if (NUM_CMAC_PORT == 1) begin
     assign m_axil_cmac_awvalid                    = axil_awvalid[C_CMAC0_INDEX];
@@ -503,6 +570,23 @@ module system_config_address_map #(
   assign axil_rdata[`getvec(32, C_SMON_INDEX)] = m_axil_smon_rdata;
   assign axil_rresp[`getvec(2, C_SMON_INDEX)]  = m_axil_smon_rresp;
   assign m_axil_smon_rready                    = axil_rready[C_SMON_INDEX];
+
+  assign m_axil_rdma_awvalid                   = axil_awvalid[C_RDMA_INDEX];
+  assign m_axil_rdma_awaddr                    = axil_rdma_awaddr;
+  assign axil_awready[C_RDMA_INDEX]            = m_axil_rdma_awready;
+  assign m_axil_rdma_wvalid                    = axil_wvalid[C_RDMA_INDEX];
+  assign m_axil_rdma_wdata                     = axil_wdata[`getvec(32, C_RDMA_INDEX)];
+  assign axil_wready[C_RDMA_INDEX]             = m_axil_rdma_wready;
+  assign axil_bvalid[C_RDMA_INDEX]             = m_axil_rdma_bvalid;
+  assign axil_bresp[`getvec(2, C_RDMA_INDEX)]  = m_axil_rdma_bresp;
+  assign m_axil_rdma_bready                    = axil_bready[C_RDMA_INDEX];
+  assign m_axil_rdma_arvalid                   = axil_arvalid[C_RDMA_INDEX];
+  assign m_axil_rdma_araddr                    = axil_rdma_araddr;
+  assign axil_arready[C_RDMA_INDEX]            = m_axil_rdma_arready;
+  assign axil_rvalid[C_RDMA_INDEX]             = m_axil_rdma_rvalid;
+  assign axil_rdata[`getvec(32, C_RDMA_INDEX)] = m_axil_rdma_rdata;
+  assign axil_rresp[`getvec(2, C_RDMA_INDEX)]  = m_axil_rdma_rresp;
+  assign m_axil_rdma_rready                    = axil_rready[C_RDMA_INDEX];
 
   system_config_axi_crossbar xbar_inst (
     .s_axi_awaddr  (s_axil_awaddr),

@@ -24,7 +24,7 @@ for {set i 0} {$i < $num_phys_func} {incr i} {
 }
 set_property "CONFIG.M0${num_phys_func}_A00_BASE_ADDR" {0x0000000000004000} [get_ips $axi_crossbar]
 set_property "CONFIG.M0${num_phys_func}_A00_ADDR_WIDTH" {12} [get_ips $axi_crossbar]
-set_property -dict { 
+set_property -dict {
     CONFIG.PROTOCOL {AXI4LITE}
     CONFIG.CONNECTIVITY_MODE {SASD}
     CONFIG.R_REGISTER {1}

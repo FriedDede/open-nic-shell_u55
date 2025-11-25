@@ -191,13 +191,13 @@ foreach {param val} [array get design_params] {
 }
 close $fp
 
-# Update the board store
-if {[string equal $board_repo ""]} {
-    set_param board.repoPaths "${root_dir}/board_files"    
-    xhub::refresh_catalog [xhub::get_xstores xilinx_board_store]
-} else {
-    set_param board.repoPaths $board_repo
-}
+# # Update the board store
+# if {[string equal $board_repo ""]} {
+#     set_param board.repoPaths "${root_dir}/board_files"    
+#     xhub::refresh_catalog [xhub::get_xstores xilinx_board_store]
+# } else {
+#     set_param board.repoPaths $board_repo
+# }
 
 # Enumerate modules
 foreach name [glob -tails -directory ${src_dir} -type d *] {
@@ -223,6 +223,11 @@ if {![file exists ${ip_build_dir}/manage_ip/]} {
 # Run synthesis for each IP
 set ip_dict [dict create]
 dict for {module module_dir} $module_dict {
+    if {[string equal $module mem_ctrl]} {
+        set module_dir ${module_dir}/${board}
+        puts "DEBUG: The current module is mem_ctrl, and the directory is ${module_dir}"
+    }
+
     set ip_tcl_dir ${module_dir}/vivado_ip
 
     # Check the existence of "$ip_tcl_dir" and "${ip_tcl_dir}/vivado_ip.tcl"
@@ -321,6 +326,13 @@ dict for {ip ip_dir} $ip_dict {
     read_ip -quiet ${ip_dir}/${ip}.xci
 }
 
+# Read the HBM block diagram
+source ${src_dir}/mem_ctrl/au55c/vivado_ip/hbm_interface.tcl
+make_wrapper -files [get_files ${top_build_dir}/open_nic_shell.srcs/sources_1/bd/hbm_bd/hbm_bd.bd] -top
+add_files -norecurse ${top_build_dir}/open_nic_shell.gen/sources_1/bd/hbm_bd/hdl/hbm_bd_wrapper.v
+
+read_verilog -sv [glob -nocomplain -directory "${src_dir}/mem_ctrl/au55c" "*.{v,vh,sv,svh}"];
+
 # Read user plugin files
 set include_dirs [get_property include_dirs [current_fileset]]
 foreach freq [list 250mhz 322mhz] {
@@ -395,7 +407,8 @@ read_xdc ${build_dir}/run_params.xdc
 # Implement design
 if {$impl} {
     update_compile_order -fileset sources_1
-    _do_impl $jobs {"Vivado Implementation Defaults"}
+    #_do_impl $jobs {"Vivado Implementation Defaults"}
+    _do_impl $jobs {"Performance_Retiming"}
 }
 
 if {$post_impl} {

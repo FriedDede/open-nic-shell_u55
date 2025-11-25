@@ -51,7 +51,7 @@
 # *************************************************************************
 set ecc qdma_subsystem_c2h_ecc
 create_ip -name ecc -vendor xilinx.com -library ip -module_name $ecc -dir ${ip_build_dir}
-set_property -dict { 
+set_property -dict {
     CONFIG.C_USE_CLK_ENABLE {true}
     CONFIG.C_REG_OUTPUT {true}
     CONFIG.C_REG_INPUT {false}

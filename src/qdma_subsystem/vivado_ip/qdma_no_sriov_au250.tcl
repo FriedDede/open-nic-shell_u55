@@ -17,34 +17,23 @@
 # *************************************************************************
 set qdma qdma_no_sriov
 create_ip -name qdma -vendor xilinx.com -library ip -module_name $qdma -dir ${ip_build_dir}
-set_property -dict { 
+set_property -dict {
     CONFIG.mode_selection {Advanced}
-    CONFIG.pl_link_cap_max_link_width {X16}
-    CONFIG.pl_link_cap_max_link_speed {8.0_GT/s}
-    CONFIG.en_transceiver_status_ports {false}
+    CONFIG.en_gt_selection {true}
+    CONFIG.csr_axilite_slave {true}
     CONFIG.dsc_byp_mode {Descriptor_bypass_and_internal}
-    CONFIG.testname {st}
-    CONFIG.pf1_pciebar2axibar_2 {0x0000000000000000}
-    CONFIG.pf2_pciebar2axibar_2 {0x0000000000000000}
-    CONFIG.pf3_pciebar2axibar_2 {0x0000000000000000}
+    CONFIG.axibar_highaddr_0 {0x000000FFFFFFFFFF}
     CONFIG.dma_reset_source_sel {Phy_Ready}
     CONFIG.pf0_bar2_scale_qdma {Megabytes}
-    CONFIG.pf0_bar2_size_qdma {4}
     CONFIG.pf1_bar2_scale_qdma {Megabytes}
-    CONFIG.pf1_bar2_size_qdma {4}
     CONFIG.pf2_bar2_scale_qdma {Megabytes}
-    CONFIG.pf2_bar2_size_qdma {4}
     CONFIG.pf3_bar2_scale_qdma {Megabytes}
-    CONFIG.pf3_bar2_size_qdma {4}
-    CONFIG.PF0_MSIX_CAP_TABLE_SIZE_qdma {009}
-    CONFIG.PF1_MSIX_CAP_TABLE_SIZE_qdma {008}
-    CONFIG.PF2_MSIX_CAP_TABLE_SIZE_qdma {008}
-    CONFIG.PF3_MSIX_CAP_TABLE_SIZE_qdma {008}
-    CONFIG.dma_intf_sel_qdma {AXI_Stream_with_Completion}
-    CONFIG.en_axi_mm_qdma {false}
-    CONFIG.SYS_RST_N_BOARD_INTERFACE {pcie_perstn}
-    CONFIG.PCIE_BOARD_INTERFACE {pci_express_x16}
-    CONFIG.xlnx_ref_board {AU250}
+    CONFIG.en_bridge_slv {true}
+    CONFIG.dma_intf_sel_qdma {AXI_MM_and_AXI_Stream_with_Completion}
+    CONFIG.en_axi_mm_qdma {true}
+    CONFIG.axibar_notranslate {false}
+    CONFIG.vdm_en {1}
 } [get_ips $qdma]
+
 set_property CONFIG.tl_pf_enable_reg $num_phys_func [get_ips $qdma]
 set_property CONFIG.num_queues $num_queue [get_ips $qdma]

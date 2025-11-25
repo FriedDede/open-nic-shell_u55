@@ -128,25 +128,13 @@ module axi_stream_packet_buffer #(
 
   // The `drop_busy` signal synchronizes with the packet stream `axis_*`.  When
   // asserted, the corresponding beat is not written into the RAM.
-  assign drop_busy = drop || drop_in_prog;
-
-  always @(posedge s_aclk) begin
-    if (~s_aresetn) begin
-      drop_in_prog <= 1'b0;
-    end
-    else if (s_axis_tvalid && s_axis_tlast && s_axis_tready) begin
-      drop_in_prog <= 1'b0;
-    end
-    else if (drop) begin
-      drop_in_prog <= 1'b1;
-    end
-  end
+  assign drop_busy = drop || dropped;
 
   always @(posedge s_aclk) begin
     if (~s_aresetn) begin
       dropped <= 1'b0;
     end
-    else if (s_axis_tvalid && s_axis_tlast && s_axis_tready && drop_in_prog) begin
+    else if (s_axis_tvalid && s_axis_tlast && s_axis_tready && drop) begin
       dropped <= 1'b1;
     end
     else begin

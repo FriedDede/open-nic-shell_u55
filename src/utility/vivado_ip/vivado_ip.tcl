@@ -1,6 +1,6 @@
 # *************************************************************************
 #
-# Copyright 2020 Xilinx, Inc.
+# Copyright 2023 Xilinx, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,4 +18,7 @@
 set ips {
     axi_stream_pipeline
     axi_lite_clock_converter
+    dev_mem_3to1_axi_crossbar
+    sys_mem_5to2_axi_crossbar
+    axi_clock_converter_for_mem
 }

@@ -1,6 +1,6 @@
 # *************************************************************************
 #
-# Copyright 2020 Xilinx, Inc.
+# Copyright 2023 Xilinx, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,11 @@
 # limitations under the License.
 #
 # *************************************************************************
+set_property LOC MMCM_X0Y2 [get_cells ddr4_inst/inst/u_ddr4_infrastructure/gen_mmcme4.u_mmcme_adv_inst]
+set_property CLOCK_DEDICATED_ROUTE BACKBONE [get_pins ddr4_inst/inst/u_ddr4_infrastructure/gen_mmcme4.u_mmcme_adv_inst/CLKIN1]
+set_property INTERNAL_VREF 0.84 [get_iobanks 63]
+set_property INTERNAL_VREF 0.84 [get_iobanks 62]
+set_property INTERNAL_VREF 0.84 [get_iobanks 61]
 set_property CONFIG_VOLTAGE 1.8 [current_design]
 set_property BITSTREAM.CONFIG.CONFIGFALLBACK Enable [current_design]
 set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]

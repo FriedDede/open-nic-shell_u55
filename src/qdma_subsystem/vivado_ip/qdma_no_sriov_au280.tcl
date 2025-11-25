@@ -23,7 +23,7 @@ set_property -dict {
     CONFIG.pl_link_cap_max_link_speed {8.0_GT/s}
     CONFIG.en_transceiver_status_ports {false}
     CONFIG.dsc_byp_mode {Descriptor_bypass_and_internal}
-    CONFIG.testname {st}
+    CONFIG.testname {mm_st}
     CONFIG.pf1_pciebar2axibar_2 {0x0000000000000000}
     CONFIG.pf2_pciebar2axibar_2 {0x0000000000000000}
     CONFIG.pf3_pciebar2axibar_2 {0x0000000000000000}
@@ -40,8 +40,8 @@ set_property -dict {
     CONFIG.PF1_MSIX_CAP_TABLE_SIZE_qdma {008}
     CONFIG.PF2_MSIX_CAP_TABLE_SIZE_qdma {008}
     CONFIG.PF3_MSIX_CAP_TABLE_SIZE_qdma {008}
-    CONFIG.dma_intf_sel_qdma {AXI_Stream_with_Completion}
-    CONFIG.en_axi_mm_qdma {false}
+    CONFIG.dma_intf_sel_qdma {AXI_MM_and_AXI_Stream_with_Completion}
+    CONFIG.en_axi_mm_qdma {true}
     CONFIG.SYS_RST_N_BOARD_INTERFACE {pcie_perstn}
     CONFIG.PCIE_BOARD_INTERFACE {pci_express_x16}
     CONFIG.xlnx_ref_board {AU280}
