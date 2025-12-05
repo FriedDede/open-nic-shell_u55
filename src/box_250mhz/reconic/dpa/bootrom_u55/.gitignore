@@ -1,0 +1,7 @@
+venv
+*.elf
+*.o
+*.img
+*.bin
+*.Xil*
+dump.txt
