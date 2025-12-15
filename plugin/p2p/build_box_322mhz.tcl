@@ -16,3 +16,4 @@
 #
 # *************************************************************************
 read_verilog -quiet -sv p2p_322mhz.sv
+read_verilog -quiet {box_322mhz/box_322mhz_address_map_inst.vh box_322mhz/user_plugin_322mhz_inst.vh}

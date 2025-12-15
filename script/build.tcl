@@ -95,12 +95,12 @@ set src_dir ${root_dir}/src
 
 array set build_options {
     -board_repo  ""
-    -board       au250
+    -board       au55c
     -tag         ""
     -overwrite   0
     -rebuild     0
     -jobs        8
-    -synth_ip    1
+    -synth_ip    0
     -impl        0
     -post_impl   0
     -user_plugin ""
@@ -119,6 +119,8 @@ array set design_params {
     -num_qdma         1
     -num_queue        512
     -num_cmac_port    1
+    -num_nodes        2
+    -bucket_size      1024
 }
 set design_params(-build_timestamp) [clock format [clock seconds] -format %m%d%H%M]
 
@@ -186,35 +188,7 @@ source ${script_dir}/board_settings/${board}.tcl
 
 # Set build directory and dump the current design parameters
 set top open_nic_shell
-set build_name ${board}
-if {![string equal $tag ""]} {
-    set build_name ${build_name}_${tag}
-}
-
-set build_dir [file normalize ${root_dir}/build/${build_name}]
-if {[file exists $build_dir]} {
-    if {!$rebuild } {
-        puts "Found existing build directory $build_dir"
-        puts "  1. Update existing build directory (default)"
-        puts "  2. Delete existing build directory and create a new one"
-        puts "  3. Exit"
-        puts -nonewline {Choose an option: }
-        gets stdin ans
-        if {[string equal $ans "2"]} {
-            file delete -force $build_dir
-            puts "Deleted existing build directory $build_dir"
-            file mkdir $build_dir
-        } elseif {[string equal $ans "3"]} {
-            puts "Build directory existed. Try to specify a different design tag"
-            exit
-        }
-    } else {
-	file delete -force $build_dir/open_nic_shell
-	puts "Deleted existing build director $build_dir/open_nic_shell"
-    }
-} else {
-    file mkdir $build_dir
-}
+set build_dir [file normalize ${root_dir}/../build]
 set fp [open "${build_dir}/DESIGN_PARAMETERS" w]
 foreach {param val} [array get design_params] {
     puts $fp "$param $val"
@@ -223,7 +197,7 @@ close $fp
 
 # Update the board store
 if {[string equal $board_repo ""]} {
-    set_param board.repoPaths "${root_dir}/board_files"    
+    set_param board.repoPaths "${root_dir}/board_files"
     # xhub::refresh_catalog [xhub::get_xstores xilinx_board_store]
 } else {
     set_param board.repoPaths $board_repo
@@ -321,21 +295,7 @@ dict for {module module_dir} $module_dict {
 close_project
 
 # Setup build directory for the design
-set top_build_dir ${build_dir}/${top}
-
-if {[file exists $top_build_dir] && !$overwrite} {
-    puts "INFO: \[$top\] Use existing build (overwrite=0)"
-    return
-}
-if {[file exists $top_build_dir]} {
-    puts "INFO: \[$top\] Found existing build, deleting... (overwrite=1)"
-    file delete -force $top_build_dir
-}
-
-create_project -force $top $top_build_dir -part $part
-if {![string equal $board_part ""]} {
-    set_property BOARD_PART $board_part [current_project]
-}
+set top_build_dir ${build_dir}/${prj_name}
 set_property target_language verilog [current_project]
 
 # Marco to enable conditional compilation at Verilog level
@@ -344,6 +304,7 @@ if {$zynq_family} {
     append verilog_define " " "__zynq_family__"
 }
 set_property verilog_define $verilog_define [current_fileset]
+set_property verilog_define "__simulation__ __${board}__ WORK_DIR=\\\\\"${root_dir}/../sim\\\\\"" [get_filesets sim_1]
 
 # Read IPs from finished IP runs
 # - Some IPs are board-specific and will be ignored for other board targets
@@ -351,12 +312,17 @@ dict for {ip ip_dir} $ip_dict {
     read_ip -quiet ${ip_dir}/${ip}.xci
 }
 
+# Read the HBM block diagram
+source ${src_dir}/hbm_subsystem/hbm_bd.tcl
+make_wrapper -files [get_files ${top_build_dir}/open_nic_hbm.srcs/sources_1/bd/hbm_bd/hbm_bd.bd] -top
+add_files -norecurse ${top_build_dir}/open_nic_hbm.gen/sources_1/bd/hbm_bd/hdl/hbm_bd_wrapper.v
+
 # Read user plugin files
 set include_dirs [get_property include_dirs [current_fileset]]
 foreach freq [list 250mhz 322mhz] {
     set box "box_$freq"
     set box_plugin ${user_plugin}/${box}
-    
+
     if {![file exists $box_plugin] || ![file exists ${user_plugin}/build_${box}.tcl]} {
         set box_plugin ${plugin_dir}/p2p/${box}
     }

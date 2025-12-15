@@ -18,7 +18,6 @@
 `include "open_nic_shell_macros.vh"
 `timescale 1ns/1ps
 module qdma_subsystem #(
-  parameter int QDMA_ID       = 0,
   parameter int MIN_PKT_LEN   = 64,
   parameter int MAX_PKT_LEN   = 1518,
   parameter int USE_PHYS_FUNC = 1,
@@ -60,7 +59,47 @@ module qdma_subsystem #(
   input   [16*NUM_PHYS_FUNC-1:0] s_axis_c2h_tuser_dst,
   output     [NUM_PHYS_FUNC-1:0] s_axis_c2h_tready,
 
-`ifdef __synthesis__
+  // QDMA DMA Engine - AXI MM interface
+  input                          m_axi_awready,
+  input                          m_axi_wready,
+  input                  [3:0]   m_axi_bid,
+  input                  [1:0]   m_axi_bresp,
+  input                          m_axi_bvalid,
+  input                          m_axi_arready,
+  input                  [3:0]   m_axi_rid,
+  input                  [511:0] m_axi_rdata,
+  input                  [1:0]   m_axi_rresp,
+  input                          m_axi_rlast,
+  input                          m_axi_rvalid,
+  output                 [3:0]   m_axi_awid,
+  output                 [63:0]  m_axi_awaddr,
+  output                 [31:0]  m_axi_awuser,
+  output                 [7:0]   m_axi_awlen,
+  output                 [2:0]   m_axi_awsize,
+  output                 [1:0]   m_axi_awburst,
+  output                 [2:0]   m_axi_awprot,
+  output                         m_axi_awvalid,
+  output                         m_axi_awlock,
+  output                 [3:0]   m_axi_awcache,
+  output                 [511:0] m_axi_wdata,
+  output                 [63:0]  m_axi_wuser,
+  output                 [63:0]  m_axi_wstrb,
+  output                         m_axi_wlast,
+  output                         m_axi_wvalid,
+  output                         m_axi_bready,
+  output                 [3:0]   m_axi_arid,
+  output                 [63:0]  m_axi_araddr,
+  output                 [31:0]  m_axi_aruser,
+  output                 [7:0]   m_axi_arlen,
+  output                 [2:0]   m_axi_arsize,
+  output                 [1:0]   m_axi_arburst,
+  output                 [2:0]   m_axi_arprot,
+  output                         m_axi_arvalid,
+  output                         m_axi_arlock,
+  output                 [3:0]   m_axi_arcache,
+  output                         m_axi_rready,
+
+
   input                   [15:0] pcie_rxp,
   input                   [15:0] pcie_rxn,
   output                  [15:0] pcie_txp,
@@ -94,83 +133,97 @@ module qdma_subsystem #(
   // routed into the `system_config` submodule to generate proper reset signals
   // for each submodule.
   output                         powerup_rstn,
-`else // !`ifdef __synthesis__
-  input                          s_axis_qdma_h2c_tvalid,
-  input                  [511:0] s_axis_qdma_h2c_tdata,
-  input                   [31:0] s_axis_qdma_h2c_tcrc,
-  input                          s_axis_qdma_h2c_tlast,
-  input                   [10:0] s_axis_qdma_h2c_tuser_qid,
-  input                    [2:0] s_axis_qdma_h2c_tuser_port_id,
-  input                          s_axis_qdma_h2c_tuser_err,
-  input                   [31:0] s_axis_qdma_h2c_tuser_mdata,
-  input                    [5:0] s_axis_qdma_h2c_tuser_mty,
-  input                          s_axis_qdma_h2c_tuser_zero_byte,
-  output                         s_axis_qdma_h2c_tready,
 
-  output                         m_axis_qdma_c2h_tvalid,
-  output                 [511:0] m_axis_qdma_c2h_tdata,
-  output                  [31:0] m_axis_qdma_c2h_tcrc,
-  output                         m_axis_qdma_c2h_tlast,
-  output                         m_axis_qdma_c2h_ctrl_marker,
-  output                   [2:0] m_axis_qdma_c2h_ctrl_port_id,
-  output                   [6:0] m_axis_qdma_c2h_ctrl_ecc,
-  output                  [15:0] m_axis_qdma_c2h_ctrl_len,
-  output                  [10:0] m_axis_qdma_c2h_ctrl_qid,
-  output                         m_axis_qdma_c2h_ctrl_has_cmpt,
-  output                   [5:0] m_axis_qdma_c2h_mty,
-  input                          m_axis_qdma_c2h_tready,
+  // QDMA control/status register interface
+  output                         s_csr_prog_done,
+  input                   [31:0] s_axil_csr_awaddr,
+  input                    [2:0] s_axil_csr_awprot,
+  input                          s_axil_csr_awvalid,
+  output                         s_axil_csr_awready,
+  input                   [31:0] s_axil_csr_wdata,
+  input                   [3:0]  s_axil_csr_wstrb,
+  input                          s_axil_csr_wvalid,
+  output                         s_axil_csr_wready,
+  output                         s_axil_csr_bvalid,
+  output                   [1:0] s_axil_csr_bresp,
+  input                          s_axil_csr_bready,
+  input                   [31:0] s_axil_csr_araddr,
+  input                    [2:0] s_axil_csr_arprot,
+  input                          s_axil_csr_arvalid,
+  output                         s_axil_csr_arready,
+  output                  [31:0] s_axil_csr_rdata,
+  output                   [1:0] s_axil_csr_rresp,
+  output                         s_axil_csr_rvalid,
+  input                          s_axil_csr_rready,
 
-  output                         m_axis_qdma_cpl_tvalid,
-  output                 [511:0] m_axis_qdma_cpl_tdata,
-  output                   [1:0] m_axis_qdma_cpl_size,
-  output                  [15:0] m_axis_qdma_cpl_dpar,
-  output                  [10:0] m_axis_qdma_cpl_ctrl_qid,
-  output                   [1:0] m_axis_qdma_cpl_ctrl_cmpt_type,
-  output                  [15:0] m_axis_qdma_cpl_ctrl_wait_pld_pkt_id,
-  output                   [2:0] m_axis_qdma_cpl_ctrl_port_id,
-  output                         m_axis_qdma_cpl_ctrl_marker,
-  output                         m_axis_qdma_cpl_ctrl_user_trig,
-  output                   [2:0] m_axis_qdma_cpl_ctrl_col_idx,
-  output                   [2:0] m_axis_qdma_cpl_ctrl_err_idx,
-  output                         m_axis_qdma_cpl_ctrl_no_wrb_marker,
-  input                          m_axis_qdma_cpl_tready,
-`endif
+  // QDMA bridge slave interface
+  input                    [3:0] s_axib_awid,
+  input                   [63:0] s_axib_awaddr,
+  input                    [3:0] s_axib_awregion,
+  input                    [7:0] s_axib_awlen,
+  input                    [2:0] s_axib_awsize,
+  input                    [1:0] s_axib_awburst,
+  input                          s_axib_awvalid,
+  input                  [511:0] s_axib_wdata,
+  input                   [63:0] s_axib_wstrb,
+  input                          s_axib_wlast,
+  input                          s_axib_wvalid,
+  input                   [63:0] s_axib_wuser,
+  output                  [63:0] s_axib_ruser,
+  input                          s_axib_bready,
+  input                    [3:0] s_axib_arid,
+  input                   [63:0] s_axib_araddr,
+  input                   [11:0] s_axib_aruser,
+  input                   [11:0] s_axib_awuser,
+  input                    [3:0] s_axib_arregion,
+  input                    [7:0] s_axib_arlen,
+  input                    [2:0] s_axib_arsize,
+  input                    [1:0] s_axib_arburst,
+  input                          s_axib_arvalid,
+  input                          s_axib_rready,
+  output                         s_axib_awready,
+  output                         s_axib_wready,
+  output                   [3:0] s_axib_bid,
+  output                   [1:0] s_axib_bresp,
+  output                         s_axib_bvalid,
+  output                         s_axib_arready,
+  output                   [3:0] s_axib_rid,
+  output                 [511:0] s_axib_rdata,
+  output                   [1:0] s_axib_rresp,
+  output                         s_axib_rlast,
+  output                         s_axib_rvalid,
 
   input                          mod_rstn,
   output                         mod_rst_done,
 
-  input                          axil_cfg_aclk,
-
 `ifdef __synthesis__
   output                         axil_aclk,
 
-`ifdef __au55n__
-  output                         ref_clk_100mhz,
-`elsif __au55c__
-  output                         ref_clk_100mhz,
-`elsif __au50__
-  output                         ref_clk_100mhz,
-`elsif __au280__
-  output                         ref_clk_100mhz,
-`endif
-  input                          axis_master_aclk,
+  `ifdef __au55n__
+    output                         ref_clk_100mhz,
+  `elsif __au55c__
+    output                         ref_clk_100mhz,
+  `elsif __au50__
+    output                         ref_clk_100mhz,
+  `elsif __au280__
+    output                         ref_clk_100mhz,        
+  `endif
   output                         axis_aclk
 
-`else // !`ifdef __synthesis__
+
+`else
   output reg                     axil_aclk,
 
-`ifdef __au55n__
-  output reg                     ref_clk_100mhz,
-`elsif __au55c__
-  output reg                     ref_clk_100mhz,
-`elsif __au50__
-  output reg                     ref_clk_100mhz,
-`elsif __au280__
-  output reg                     ref_clk_100mhz,
-`endif
-  input reg                      axis_master_aclk,
+  `ifdef __au55n__
+    output reg                        ref_clk_100mhz,
+  `elsif __au55c__
+    output reg                        ref_clk_100mhz,
+  `elsif __au50__
+    output reg                        ref_clk_100mhz,
+  `elsif __au280__
+    output reg                        ref_clk_100mhz,        
+  `endif
   output reg                     axis_aclk
-
 `endif
 );
 
@@ -198,6 +251,47 @@ module qdma_subsystem #(
   wire         axis_qdma_c2h_ctrl_has_cmpt;
   wire   [5:0] axis_qdma_c2h_mty;
   wire         axis_qdma_c2h_tready;
+
+  /*
+  wire         axi_qdma_mm_awready;
+  wire         axi_qdma_mm_wready;
+  wire [3:0]   axi_qdma_mm_bid;
+  wire [1:0]   axi_qdma_mm_bresp;
+  wire         axi_qdma_mm_bvalid;
+  wire         axi_qdma_mm_arready;
+  wire [3:0]   axi_qdma_mm_rid;
+  wire [511:0] axi_qdma_mm_rdata;
+  wire [1:0]   axi_qdma_mm_rresp;
+  wire         axi_qdma_mm_rlast;
+  wire         axi_qdma_mm_rvalid;
+  wire [3:0]   axi_qdma_mm_awid;
+  wire [63:0]  axi_qdma_mm_awaddr;
+  wire [31:0]  axi_qdma_mm_awuser;
+  wire [7:0]   axi_qdma_mm_awlen;
+  wire [2:0]   axi_qdma_mm_awsize;
+  wire [1:0]   axi_qdma_mm_awburst;
+  wire [2:0]   axi_qdma_mm_awprot;
+  wire         axi_qdma_mm_awvalid;
+  wire         axi_qdma_mm_awlock;
+  wire [3:0]   axi_qdma_mm_awcache;
+  wire [511:0] axi_qdma_mm_wdata;
+  wire [63:0]  axi_qdma_mm_wuser;
+  wire [63:0]  axi_qdma_mm_wstrb;
+  wire         axi_qdma_mm_wlast;
+  wire         axi_qdma_mm_wvalid;
+  wire         axi_qdma_mm_bready;
+  wire [3:0]   axi_qdma_mm_arid;
+  wire [63:0]  axi_qdma_mm_araddr;
+  wire [31:0]  axi_qdma_mm_aruser;
+  wire [7:0]   axi_qdma_mm_arlen;
+  wire [2:0]   axi_qdma_mm_arsize;
+  wire [1:0]   axi_qdma_mm_arburst;
+  wire [2:0]   axi_qdma_mm_arprot;
+  wire         axi_qdma_mm_arvalid;
+  wire         axi_qdma_mm_arlock;
+  wire [3:0]   axi_qdma_mm_arcache;
+  wire         axi_qdma_mm_rready;
+  */
 
   wire         axis_qdma_cpl_tvalid;
   wire [511:0] axis_qdma_cpl_tdata;
@@ -241,6 +335,20 @@ module qdma_subsystem #(
   wire         h2c_byp_in_st_no_dma;
   wire         h2c_byp_in_st_rdy;
 
+  wire  [63:0] h2c_byp_in_mm_radr;
+  wire  [63:0] h2c_byp_in_mm_wadr;
+  wire  [15:0] h2c_byp_in_mm_len;
+  wire         h2c_byp_in_mm_mrkr_req;
+  wire  [2:0]  h2c_byp_in_mm_port_id;
+  wire         h2c_byp_in_mm_sdi;
+  wire  [10:0] h2c_byp_in_mm_qid;
+  wire         h2c_byp_in_mm_error;
+  wire  [7:0]  h2c_byp_in_mm_func;
+  wire  [15:0] h2c_byp_in_mm_cidx;
+  wire         h2c_byp_in_mm_no_dma;
+  wire         h2c_byp_in_mm_vld;
+  wire         h2c_byp_in_mm_rdy;
+
   wire         c2h_byp_out_vld;
   wire [255:0] c2h_byp_out_dsc;
   wire         c2h_byp_out_st_mm;
@@ -263,6 +371,20 @@ module qdma_subsystem #(
   wire   [6:0] c2h_byp_in_st_csh_pfch_tag;
   wire         c2h_byp_in_st_csh_rdy;
 
+  wire  [63:0] c2h_byp_in_mm_radr;
+  wire  [63:0] c2h_byp_in_mm_wadr;
+  wire  [15:0] c2h_byp_in_mm_len;
+  wire         c2h_byp_in_mm_mrkr_req;
+  wire  [2:0]  c2h_byp_in_mm_port_id;
+  wire         c2h_byp_in_mm_sdi;
+  wire  [10:0] c2h_byp_in_mm_qid;
+  wire         c2h_byp_in_mm_error;
+  wire  [7:0]  c2h_byp_in_mm_func;
+  wire  [15:0] c2h_byp_in_mm_cidx;
+  wire         c2h_byp_in_mm_vld;
+  wire         c2h_byp_in_mm_no_dma;
+  wire         c2h_byp_in_mm_rdy;
+
   wire         axil_aresetn;
 
   // Reset is clocked by the 125MHz AXI-Lite clock
@@ -276,7 +398,7 @@ module qdma_subsystem #(
     .rstn         (axil_aresetn)
   );
 
-`ifdef __synthesis__
+
   wire         pcie_refclk_gt;
   wire         pcie_refclk;
 
@@ -303,6 +425,19 @@ module qdma_subsystem #(
   assign h2c_byp_in_st_cidx         = 0;
   assign h2c_byp_in_st_no_dma       = 1'b0;
 
+  assign h2c_byp_in_mm_radr         = 0;
+  assign h2c_byp_in_mm_wadr         = 0;
+  assign h2c_byp_in_mm_len          = 0;
+  assign h2c_byp_in_mm_mrkr_req     = 1'b0;
+  assign h2c_byp_in_mm_port_id      = 0;
+  assign h2c_byp_in_mm_sdi          = 1'b0;
+  assign h2c_byp_in_mm_qid          = 0;
+  assign h2c_byp_in_mm_error        = 1'b0;
+  assign h2c_byp_in_mm_func         = 0;
+  assign h2c_byp_in_mm_cidx         = 0;
+  assign h2c_byp_in_mm_no_dma       = 1'b0;
+  assign h2c_byp_in_mm_vld          = 1'b0;
+
   assign c2h_byp_out_rdy            = 1'b1;
   assign c2h_byp_in_st_csh_vld      = 1'b0;
   assign c2h_byp_in_st_csh_addr     = 0;
@@ -312,9 +447,20 @@ module qdma_subsystem #(
   assign c2h_byp_in_st_csh_func     = 0;
   assign c2h_byp_in_st_csh_pfch_tag = 0;
 
-  qdma_subsystem_qdma_wrapper #(
-    .QDMA_ID (QDMA_ID)
-  ) qdma_wrapper_inst (
+  assign c2h_byp_in_mm_radr         = 0;
+  assign c2h_byp_in_mm_wadr         = 0;
+  assign c2h_byp_in_mm_len          = 0;
+  assign c2h_byp_in_mm_mrkr_req     = 1'b0;
+  assign c2h_byp_in_mm_port_id      = 0;
+  assign c2h_byp_in_mm_sdi          = 1'b0;
+  assign c2h_byp_in_mm_qid          = 0;
+  assign c2h_byp_in_mm_error        = 1'b0;
+  assign c2h_byp_in_mm_func         = 0;
+  assign c2h_byp_in_mm_cidx         = 0;
+  assign c2h_byp_in_mm_vld          = 1'b0;
+  assign c2h_byp_in_mm_no_dma       = 1'b0;
+
+  qdma_subsystem_qdma_wrapper qdma_wrapper_inst (
     .pcie_rxp                        (pcie_rxp),
     .pcie_rxn                        (pcie_rxn),
     .pcie_txp                        (pcie_txp),
@@ -336,6 +482,45 @@ module qdma_subsystem #(
     .m_axil_rdata                    (m_axil_pcie_rdata),
     .m_axil_rresp                    (m_axil_pcie_rresp),
     .m_axil_rready                   (m_axil_pcie_rready),
+
+    .m_axi_awready                   (m_axi_awready),
+    .m_axi_wready                    (m_axi_wready),
+    .m_axi_bid                       (m_axi_bid),
+    .m_axi_bresp                     (m_axi_bresp),
+    .m_axi_bvalid                    (m_axi_bvalid),
+    .m_axi_arready                   (m_axi_arready),
+    .m_axi_rid                       (m_axi_rid),
+    .m_axi_rdata                     (m_axi_rdata),
+    .m_axi_rresp                     (m_axi_rresp),
+    .m_axi_rlast                     (m_axi_rlast),
+    .m_axi_rvalid                    (m_axi_rvalid),
+    .m_axi_awid                      (m_axi_awid),
+    .m_axi_awaddr                    (m_axi_awaddr),
+    .m_axi_awuser                    (m_axi_awuser),
+    .m_axi_awlen                     (m_axi_awlen),
+    .m_axi_awsize                    (m_axi_awsize),
+    .m_axi_awburst                   (m_axi_awburst),
+    .m_axi_awprot                    (m_axi_awprot),
+    .m_axi_awvalid                   (m_axi_awvalid),
+    .m_axi_awlock                    (m_axi_awlock),
+    .m_axi_awcache                   (m_axi_awcache),
+    .m_axi_wdata                     (m_axi_wdata),
+    .m_axi_wuser                     (m_axi_wuser),
+    .m_axi_wstrb                     (m_axi_wstrb),
+    .m_axi_wlast                     (m_axi_wlast),
+    .m_axi_wvalid                    (m_axi_wvalid),
+    .m_axi_bready                    (m_axi_bready),
+    .m_axi_arid                      (m_axi_arid),
+    .m_axi_araddr                    (m_axi_araddr),
+    .m_axi_aruser                    (m_axi_aruser),
+    .m_axi_arlen                     (m_axi_arlen),
+    .m_axi_arsize                    (m_axi_arsize),
+    .m_axi_arburst                   (m_axi_arburst),
+    .m_axi_arprot                    (m_axi_arprot),
+    .m_axi_arvalid                   (m_axi_arvalid),
+    .m_axi_arlock                    (m_axi_arlock),
+    .m_axi_arcache                   (m_axi_arcache),
+    .m_axi_rready                    (m_axi_rready),
 
     .m_axis_h2c_tvalid               (axis_qdma_h2c_tvalid),
     .m_axis_h2c_tdata                (axis_qdma_h2c_tdata),
@@ -404,6 +589,20 @@ module qdma_subsystem #(
     .h2c_byp_in_st_no_dma            (h2c_byp_in_st_no_dma),
     .h2c_byp_in_st_rdy               (h2c_byp_in_st_rdy),
 
+    .h2c_byp_in_mm_radr              (h2c_byp_in_mm_radr),
+    .h2c_byp_in_mm_wadr              (h2c_byp_in_mm_wadr),
+    .h2c_byp_in_mm_len               (h2c_byp_in_mm_len),
+    .h2c_byp_in_mm_mrkr_req          (h2c_byp_in_mm_mrkr_req),
+    .h2c_byp_in_mm_port_id           (h2c_byp_in_mm_port_id),
+    .h2c_byp_in_mm_sdi               (h2c_byp_in_mm_sdi),
+    .h2c_byp_in_mm_qid               (h2c_byp_in_mm_qid),
+    .h2c_byp_in_mm_error             (h2c_byp_in_mm_error),
+    .h2c_byp_in_mm_func              (h2c_byp_in_mm_func),
+    .h2c_byp_in_mm_cidx              (h2c_byp_in_mm_cidx),
+    .h2c_byp_in_mm_no_dma            (h2c_byp_in_mm_no_dma),
+    .h2c_byp_in_mm_vld               (h2c_byp_in_mm_vld),
+    .h2c_byp_in_mm_rdy               (h2c_byp_in_mm_rdy),
+
     .c2h_byp_out_vld                 (c2h_byp_out_vld),
     .c2h_byp_out_dsc                 (c2h_byp_out_dsc),
     .c2h_byp_out_st_mm               (c2h_byp_out_st_mm),
@@ -426,6 +625,77 @@ module qdma_subsystem #(
     .c2h_byp_in_st_csh_pfch_tag      (c2h_byp_in_st_csh_pfch_tag),
     .c2h_byp_in_st_csh_rdy           (c2h_byp_in_st_csh_rdy),
 
+    .c2h_byp_in_mm_radr              (c2h_byp_in_mm_radr),
+    .c2h_byp_in_mm_wadr              (c2h_byp_in_mm_wadr),
+    .c2h_byp_in_mm_len               (c2h_byp_in_mm_len),
+    .c2h_byp_in_mm_mrkr_req          (c2h_byp_in_mm_mrkr_req),
+    .c2h_byp_in_mm_port_id           (c2h_byp_in_mm_port_id),
+    .c2h_byp_in_mm_sdi               (c2h_byp_in_mm_sdi),
+    .c2h_byp_in_mm_qid               (c2h_byp_in_mm_qid),
+    .c2h_byp_in_mm_error             (c2h_byp_in_mm_error),
+    .c2h_byp_in_mm_func              (c2h_byp_in_mm_func),
+    .c2h_byp_in_mm_cidx              (c2h_byp_in_mm_cidx),
+    .c2h_byp_in_mm_vld               (c2h_byp_in_mm_vld),
+    .c2h_byp_in_mm_no_dma            (c2h_byp_in_mm_no_dma),
+    .c2h_byp_in_mm_rdy               (c2h_byp_in_mm_rdy),
+
+    .s_csr_prog_done                 (s_csr_prog_done),
+    .s_axil_csr_awaddr               (s_axil_csr_awaddr),
+    .s_axil_csr_awprot               (s_axil_csr_awprot),
+    .s_axil_csr_awvalid              (s_axil_csr_awvalid),
+    .s_axil_csr_awready              (s_axil_csr_awready),
+    .s_axil_csr_wdata                (s_axil_csr_wdata),
+    .s_axil_csr_wstrb                (s_axil_csr_wstrb),
+    .s_axil_csr_wvalid               (s_axil_csr_wvalid),
+    .s_axil_csr_wready               (s_axil_csr_wready),
+    .s_axil_csr_bvalid               (s_axil_csr_bvalid),
+    .s_axil_csr_bresp                (s_axil_csr_bresp),
+    .s_axil_csr_bready               (s_axil_csr_bready),
+    .s_axil_csr_araddr               (s_axil_csr_araddr),
+    .s_axil_csr_arprot               (s_axil_csr_arprot),
+    .s_axil_csr_arvalid              (s_axil_csr_arvalid),
+    .s_axil_csr_arready              (s_axil_csr_arready),
+    .s_axil_csr_rdata                (s_axil_csr_rdata),
+    .s_axil_csr_rresp                (s_axil_csr_rresp),
+    .s_axil_csr_rvalid               (s_axil_csr_rvalid),
+    .s_axil_csr_rready               (s_axil_csr_rready),
+
+    .s_axib_awid                     (s_axib_awid),
+    .s_axib_awaddr                   (s_axib_awaddr),
+    .s_axib_awregion                 (s_axib_awregion),
+    .s_axib_awlen                    (s_axib_awlen),
+    .s_axib_awsize                   (s_axib_awsize),
+    .s_axib_awburst                  (s_axib_awburst),
+    .s_axib_awvalid                  (s_axib_awvalid),
+    .s_axib_wdata                    (s_axib_wdata),
+    .s_axib_wstrb                    (s_axib_wstrb),
+    .s_axib_wlast                    (s_axib_wlast),
+    .s_axib_wvalid                   (s_axib_wvalid),
+    .s_axib_wuser                    (s_axib_wuser),
+    .s_axib_ruser                    (s_axib_ruser),
+    .s_axib_bready                   (s_axib_bready),
+    .s_axib_arid                     (s_axib_arid),
+    .s_axib_araddr                   (s_axib_araddr),
+    .s_axib_aruser                   (s_axib_aruser),
+    .s_axib_awuser                   (s_axib_awuser),
+    .s_axib_arregion                 (s_axib_arregion),
+    .s_axib_arlen                    (s_axib_arlen),
+    .s_axib_arsize                   (s_axib_arsize),
+    .s_axib_arburst                  (s_axib_arburst),
+    .s_axib_arvalid                  (s_axib_arvalid),
+    .s_axib_rready                   (s_axib_rready),
+    .s_axib_awready                  (s_axib_awready),
+    .s_axib_wready                   (s_axib_wready),
+    .s_axib_bid                      (s_axib_bid),
+    .s_axib_bresp                    (s_axib_bresp),
+    .s_axib_bvalid                   (s_axib_bvalid),
+    .s_axib_arready                  (s_axib_arready),
+    .s_axib_rid                      (s_axib_rid),
+    .s_axib_rdata                    (s_axib_rdata),
+    .s_axib_rresp                    (s_axib_rresp),
+    .s_axib_rlast                    (s_axib_rlast),
+    .s_axib_rvalid                   (s_axib_rvalid),
+
     .pcie_refclk                     (pcie_refclk),
     .pcie_refclk_gt                  (pcie_refclk_gt),
     .pcie_rstn                       (pcie_rstn),
@@ -436,88 +706,18 @@ module qdma_subsystem #(
 
     .axil_aclk                       (axil_aclk),
     .axis_aclk                       (axis_aclk),
-
-`ifdef __au55n__
+  `ifdef __au55n__
     .ref_clk_100mhz                  (ref_clk_100mhz),
-`elsif __au55c__
+  `elsif __au55c__
     .ref_clk_100mhz                  (ref_clk_100mhz),
-`elsif __au50__
+  `elsif __au50__
     .ref_clk_100mhz                  (ref_clk_100mhz),
-`elsif __au280__
-    .ref_clk_100mhz                  (ref_clk_100mhz),
-`endif
+  `elsif __au280__
+    .ref_clk_100mhz                  (ref_clk_100mhz),        
+  `endif
 
     .aresetn                         (powerup_rstn)
   );
-`else // !`ifdef __synthesis__
-  initial begin
-    axil_aclk = 1'b1;
-    axis_aclk = 1'b1;
-  
-`ifdef __au55n__
-    ref_clk_100mhz = 1'b1;
-`elsif __au55c__
-    ref_clk_100mhz = 1'b1;
-`elsif __au50__
-    ref_clk_100mhz = 1'b1;
-`elsif __au280__
-    ref_clk_100mhz = 1'b1;
-`endif
-  end
-
-  always #4000ps axil_aclk = ~axil_aclk;
-  always #2000ps axis_aclk = ~axis_aclk;
-
-`ifdef __au55n__
-  always #5000ps ref_clk_100mhz = ~ref_clk_100mhz;
-`elsif __au55c__
-  always #5000ps ref_clk_100mhz = ~ref_clk_100mhz;
-`elsif __au50__
-  always #5000ps ref_clk_100mhz = ~ref_clk_100mhz;
-`elsif __au280__
-  always #5000ps ref_clk_100mhz = ~ref_clk_100mhz;
-`endif
-
-  assign axis_qdma_h2c_tvalid                 = s_axis_qdma_h2c_tvalid;
-  assign axis_qdma_h2c_tdata                  = s_axis_qdma_h2c_tdata;
-  assign axis_qdma_h2c_tcrc                   = s_axis_qdma_h2c_tcrc;
-  assign axis_qdma_h2c_tlast                  = s_axis_qdma_h2c_tlast;
-  assign axis_qdma_h2c_tuser_qid              = s_axis_qdma_h2c_tuser_qid;
-  assign axis_qdma_h2c_tuser_port_id          = s_axis_qdma_h2c_tuser_port_id;
-  assign axis_qdma_h2c_tuser_err              = s_axis_qdma_h2c_tuser_err;
-  assign axis_qdma_h2c_tuser_mdata            = s_axis_qdma_h2c_tuser_mdata;
-  assign axis_qdma_h2c_tuser_mty              = s_axis_qdma_h2c_tuser_mty;
-  assign axis_qdma_h2c_tuser_zero_byte        = s_axis_qdma_h2c_tuser_zero_byte;
-  assign s_axis_qdma_h2c_tready               = axis_qdma_h2c_tready;
-
-  assign m_axis_qdma_c2h_tvalid               = axis_qdma_c2h_tvalid;
-  assign m_axis_qdma_c2h_tdata                = axis_qdma_c2h_tdata;
-  assign m_axis_qdma_c2h_tcrc                 = axis_qdma_c2h_tcrc;
-  assign m_axis_qdma_c2h_tlast                = axis_qdma_c2h_tlast;
-  assign m_axis_qdma_c2h_ctrl_marker          = axis_qdma_c2h_ctrl_marker;
-  assign m_axis_qdma_c2h_ctrl_port_id         = axis_qdma_c2h_ctrl_port_id;
-  assign m_axis_qdma_c2h_ctrl_ecc             = axis_qdma_c2h_ctrl_ecc;
-  assign m_axis_qdma_c2h_ctrl_len             = axis_qdma_c2h_ctrl_len;
-  assign m_axis_qdma_c2h_ctrl_qid             = axis_qdma_c2h_ctrl_qid;
-  assign m_axis_qdma_c2h_ctrl_has_cmpt        = axis_qdma_c2h_ctrl_has_cmpt;
-  assign m_axis_qdma_c2h_mty                  = axis_qdma_c2h_mty;
-  assign axis_qdma_c2h_tready                 = m_axis_qdma_c2h_tready;
-
-  assign m_axis_qdma_cpl_tvalid               = axis_qdma_cpl_tvalid;
-  assign m_axis_qdma_cpl_tdata                = axis_qdma_cpl_tdata;
-  assign m_axis_qdma_cpl_size                 = axis_qdma_cpl_size;
-  assign m_axis_qdma_cpl_dpar                 = axis_qdma_cpl_dpar;
-  assign m_axis_qdma_cpl_ctrl_qid             = axis_qdma_cpl_ctrl_qid;
-  assign m_axis_qdma_cpl_ctrl_cmpt_type       = axis_qdma_cpl_ctrl_cmpt_type;
-  assign m_axis_qdma_cpl_ctrl_wait_pld_pkt_id = axis_qdma_cpl_ctrl_wait_pld_pkt_id;
-  assign m_axis_qdma_cpl_ctrl_port_id         = axis_qdma_cpl_ctrl_port_id;
-  assign m_axis_qdma_cpl_ctrl_marker          = axis_qdma_cpl_ctrl_marker;
-  assign m_axis_qdma_cpl_ctrl_user_trig       = axis_qdma_cpl_ctrl_user_trig;
-  assign m_axis_qdma_cpl_ctrl_col_idx         = axis_qdma_cpl_ctrl_col_idx;
-  assign m_axis_qdma_cpl_ctrl_err_idx         = axis_qdma_cpl_ctrl_err_idx;
-  assign m_axis_qdma_cpl_ctrl_no_wrb_marker   = axis_qdma_cpl_ctrl_no_wrb_marker;
-  assign axis_qdma_cpl_tready                 = m_axis_qdma_cpl_tready;
-`endif
 
   generate if (USE_PHYS_FUNC == 0) begin
     // Terminate the AXI-lite interface for QDMA subsystem registers
@@ -543,7 +743,7 @@ module qdma_subsystem #(
       .s_axil_rready  (s_axil_rready),
 
       .aresetn        (axil_aresetn),
-      .aclk           (axil_cfg_aclk)
+      .aclk           (axil_aclk)
     );
 
     // Terminate H2C and C2H interfaces to QDMA IP
@@ -698,7 +898,7 @@ module qdma_subsystem #(
       .m_axil_func_rresp   (axil_func_rresp),
       .m_axil_func_rready  (axil_func_rready),
 
-      .aclk                (axil_cfg_aclk),
+      .aclk                (axil_aclk),
       .aresetn             (axil_aresetn)
     );
 
@@ -720,7 +920,7 @@ module qdma_subsystem #(
       .s_axil_rresp   (axil_rresp),
       .s_axil_rready  (axil_rready),
 
-      .axil_aclk      (axil_cfg_aclk),
+      .axil_aclk      (axil_aclk),
       .axis_aclk      (axis_aclk),
       .axil_aresetn   (axil_aresetn)
     );
@@ -804,7 +1004,6 @@ module qdma_subsystem #(
     for (genvar i = 0; i < NUM_PHYS_FUNC; i++) begin
       qdma_subsystem_function #(
         .FUNC_ID     (i),
-        .QDMA_ID     (QDMA_ID),
         .MAX_PKT_LEN (MAX_PKT_LEN),
         .MIN_PKT_LEN (MIN_PKT_LEN)
       ) func_inst (
@@ -857,13 +1056,31 @@ module qdma_subsystem #(
         .m_axis_c2h_tuser_qid  (axis_c2h_tuser_qid[`getvec(11, i)]),
         .m_axis_c2h_tready     (axis_c2h_tready[i]),
 
-        .axil_aclk             (axil_cfg_aclk),
+        .axil_aclk             (axil_aclk),
         .axis_aclk             (axis_aclk),
-        .axis_master_aclk      (axis_master_aclk),
         .axil_aresetn          (axil_aresetn)
       );
     end
-  end
+
+    (* mark_debug = "true" *) logic [47:0] qdma_h2c_pkt_cnt;
+    (* mark_debug = "true" *) logic [47:0] qdma_c2h_pkt_cnt;
+
+    always_ff @(posedge axis_aclk)
+      if(!axil_aresetn) begin
+        qdma_h2c_pkt_cnt <= 0;
+        qdma_c2h_pkt_cnt <= 0;
+      end
+      else begin
+        if ((m_axis_h2c_tvalid != 0) && (m_axis_h2c_tready != 0) && (m_axis_h2c_tlast != 0)) begin
+          qdma_h2c_pkt_cnt <= qdma_h2c_pkt_cnt + 1;
+        end
+
+        if ((s_axis_c2h_tvalid != 0) && (s_axis_c2h_tready != 0) && (axis_c2h_tlast !=0)) begin
+          qdma_c2h_pkt_cnt <= qdma_c2h_pkt_cnt + 1;
+        end
+      end
+    end
+
   endgenerate
 
 endmodule: qdma_subsystem

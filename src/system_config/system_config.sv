@@ -55,6 +55,23 @@ module system_config #(
   input        [2*NUM_QDMA-1:0] m_axil_qdma_rresp,
   output         [NUM_QDMA-1:0] m_axil_qdma_rready,
 
+  output              m_axil_qdma_csr_awvalid,
+  output    [31:0]    m_axil_qdma_csr_awaddr,
+  input               m_axil_qdma_csr_awready,
+  output              m_axil_qdma_csr_wvalid,
+  output    [31:0]    m_axil_qdma_csr_wdata,
+  input               m_axil_qdma_csr_wready,
+  input               m_axil_qdma_csr_bvalid,
+  input      [1:0]    m_axil_qdma_csr_bresp,
+  output              m_axil_qdma_csr_bready,
+  output              m_axil_qdma_csr_arvalid,
+  output    [31:0]    m_axil_qdma_csr_araddr,
+  input               m_axil_qdma_csr_arready,
+  input               m_axil_qdma_csr_rvalid,
+  input     [31:0]    m_axil_qdma_csr_rdata,
+  input      [1:0]    m_axil_qdma_csr_rresp,
+  output              m_axil_qdma_csr_rready,
+
   output    [NUM_CMAC_PORT-1:0] m_axil_adap_awvalid,
   output [32*NUM_CMAC_PORT-1:0] m_axil_adap_awaddr,
   input     [NUM_CMAC_PORT-1:0] m_axil_adap_awready,
@@ -175,8 +192,8 @@ module system_config #(
 
   // Parameter DRC
   initial begin
-    if (NUM_QDMA > 2 || NUM_QDMA < 1) begin
-      $fatal("[%m] Number of QDMAs should be within the range [1, 2]");
+    if (NUM_QDMA != 1) begin
+      $fatal("[%m] Number of QDMAs should be 1, 2 is not supported in this design");
     end
     if (NUM_CMAC_PORT > 2 || NUM_CMAC_PORT < 1) begin
       $fatal("[%m] Number of CMACs should be within the range [1, 2]");
@@ -298,25 +315,24 @@ module system_config #(
   wire  [3:0] axil_qspi_int_wstrb;
    
   system_config_address_map #(
-    .NUM_QDMA   (NUM_QDMA),
     .NUM_CMAC_PORT (NUM_CMAC_PORT)
   ) scfg_address_map_inst (
-    .s_axil_awvalid      (s_axil_awvalid),
-    .s_axil_awaddr       (s_axil_awaddr),
-    .s_axil_awready      (s_axil_awready),
-    .s_axil_wvalid       (s_axil_wvalid),
-    .s_axil_wdata        (s_axil_wdata),
-    .s_axil_wready       (s_axil_wready),
-    .s_axil_bvalid       (s_axil_bvalid),
-    .s_axil_bresp        (s_axil_bresp),
-    .s_axil_bready       (s_axil_bready),
-    .s_axil_arvalid      (s_axil_arvalid),
-    .s_axil_araddr       (s_axil_araddr),
-    .s_axil_arready      (s_axil_arready),
-    .s_axil_rvalid       (s_axil_rvalid),
-    .s_axil_rdata        (s_axil_rdata),
-    .s_axil_rresp        (s_axil_rresp),
-    .s_axil_rready       (s_axil_rready),
+    .s_axil_awvalid      (s_axil_awvalid[0]),
+    .s_axil_awaddr       (s_axil_awaddr[0]),
+    .s_axil_awready      (s_axil_awready[0]),
+    .s_axil_wvalid       (s_axil_wvalid[0]),
+    .s_axil_wdata        (s_axil_wdata[0]),
+    .s_axil_wready       (s_axil_wready[0]),
+    .s_axil_bvalid       (s_axil_bvalid[0]),
+    .s_axil_bresp        (s_axil_bresp[0]),
+    .s_axil_bready       (s_axil_bready[0]),
+    .s_axil_arvalid      (s_axil_arvalid[0]),
+    .s_axil_araddr       (s_axil_araddr[0]),
+    .s_axil_arready      (s_axil_arready[0]),
+    .s_axil_rvalid       (s_axil_rvalid[0]),
+    .s_axil_rdata        (s_axil_rdata[0]),
+    .s_axil_rresp        (s_axil_rresp[0]),
+    .s_axil_rready       (s_axil_rready[0]),
 
     .m_axil_scfg_awvalid (axil_scfg_awvalid),
     .m_axil_scfg_awaddr  (axil_scfg_awaddr),
@@ -335,22 +351,39 @@ module system_config #(
     .m_axil_scfg_rresp   (axil_scfg_rresp),
     .m_axil_scfg_rready  (axil_scfg_rready),
 
-    .m_axil_qdma_awvalid (m_axil_qdma_awvalid),
-    .m_axil_qdma_awaddr  (m_axil_qdma_awaddr),
-    .m_axil_qdma_awready (m_axil_qdma_awready),
-    .m_axil_qdma_wvalid  (m_axil_qdma_wvalid),
-    .m_axil_qdma_wdata   (m_axil_qdma_wdata),
-    .m_axil_qdma_wready  (m_axil_qdma_wready),
-    .m_axil_qdma_bvalid  (m_axil_qdma_bvalid),
-    .m_axil_qdma_bresp   (m_axil_qdma_bresp),
-    .m_axil_qdma_bready  (m_axil_qdma_bready),
-    .m_axil_qdma_arvalid (m_axil_qdma_arvalid),
-    .m_axil_qdma_araddr  (m_axil_qdma_araddr),
-    .m_axil_qdma_arready (m_axil_qdma_arready),
-    .m_axil_qdma_rvalid  (m_axil_qdma_rvalid),
-    .m_axil_qdma_rdata   (m_axil_qdma_rdata),
-    .m_axil_qdma_rresp   (m_axil_qdma_rresp),
-    .m_axil_qdma_rready  (m_axil_qdma_rready),
+    .m_axil_qdma_awvalid (m_axil_qdma_awvalid[0]),
+    .m_axil_qdma_awaddr  (m_axil_qdma_awaddr[0]),
+    .m_axil_qdma_awready (m_axil_qdma_awready[0]),
+    .m_axil_qdma_wvalid  (m_axil_qdma_wvalid[0]),
+    .m_axil_qdma_wdata   (m_axil_qdma_wdata[0]),
+    .m_axil_qdma_wready  (m_axil_qdma_wready[0]),
+    .m_axil_qdma_bvalid  (m_axil_qdma_bvalid[0]),
+    .m_axil_qdma_bresp   (m_axil_qdma_bresp[0]),
+    .m_axil_qdma_bready  (m_axil_qdma_bready[0]),
+    .m_axil_qdma_arvalid (m_axil_qdma_arvalid[0]),
+    .m_axil_qdma_araddr  (m_axil_qdma_araddr[0]),
+    .m_axil_qdma_arready (m_axil_qdma_arready[0]),
+    .m_axil_qdma_rvalid  (m_axil_qdma_rvalid[0]),
+    .m_axil_qdma_rdata   (m_axil_qdma_rdata[0]),
+    .m_axil_qdma_rresp   (m_axil_qdma_rresp[0]),
+    .m_axil_qdma_rready  (m_axil_qdma_rready[0]),
+
+    .m_axil_qdma_csr_awvalid    ( m_axil_qdma_csr_awvalid    ),
+    .m_axil_qdma_csr_awaddr     ( m_axil_qdma_csr_awaddr    ),
+    .m_axil_qdma_csr_awready    ( m_axil_qdma_csr_awready    ),
+    .m_axil_qdma_csr_wvalid     ( m_axil_qdma_csr_wvalid    ),
+    .m_axil_qdma_csr_wdata      ( m_axil_qdma_csr_wdata    ),
+    .m_axil_qdma_csr_wready     ( m_axil_qdma_csr_wready    ),
+    .m_axil_qdma_csr_bvalid     ( m_axil_qdma_csr_bvalid    ),
+    .m_axil_qdma_csr_bresp      ( m_axil_qdma_csr_bresp    ),
+    .m_axil_qdma_csr_bready     ( m_axil_qdma_csr_bready    ),
+    .m_axil_qdma_csr_arvalid    ( m_axil_qdma_csr_arvalid    ),
+    .m_axil_qdma_csr_araddr     ( m_axil_qdma_csr_araddr    ),
+    .m_axil_qdma_csr_arready    ( m_axil_qdma_csr_arready    ),
+    .m_axil_qdma_csr_rvalid     ( m_axil_qdma_csr_rvalid    ),
+    .m_axil_qdma_csr_rdata      ( m_axil_qdma_csr_rdata    ),
+    .m_axil_qdma_csr_rresp      ( m_axil_qdma_csr_rresp    ),
+    .m_axil_qdma_csr_rready     ( m_axil_qdma_csr_rready    ),
 
     .m_axil_adap_awvalid (m_axil_adap_awvalid),
     .m_axil_adap_awaddr  (m_axil_adap_awaddr),
@@ -477,7 +510,7 @@ module system_config #(
     .m_axil_qspi_awprot  (axil_qspi_awprot),
     .m_axil_qspi_wstrb   (axil_qspi_wstrb),
 
-    .aclk                (aclk),
+    .aclk                (aclk[0]),
     .aresetn             (aresetn)
   );
 
@@ -531,7 +564,10 @@ module system_config #(
      .s_axi_rdata     (axil_smon_rdata),                    
      .s_axi_rresp     (axil_smon_rresp),                    
      .s_axi_rvalid    (axil_smon_rvalid),                    
-     .s_axi_rready    (axil_smon_rready)
+     .s_axi_rready    (axil_smon_rready),
+
+     .vn              (1'b0),
+     .vp              (1'b0)
   );
 
   wire        cms_clk;
@@ -691,6 +727,7 @@ axi_lite_clock_converter axi_clock_conv_cms_inst (
       .m_axi_aresetn (cms_aresetn)
     );
 
+`ifndef __simulation__
 cms_subsystem_wrapper
   cms_subsystem_wrapper_inst (
     .aclk_ctrl_0             (cms_clk),
@@ -751,5 +788,6 @@ cms_subsystem_wrapper
     .satellite_uart_0_rxd    (satellite_uart_0_rxd),
     .satellite_uart_0_txd    (satellite_uart_0_txd)
   );
+`endif
 
 endmodule: system_config

@@ -32,3 +32,19 @@ set_property -dict {
     CONFIG.SYNCHRONIZATION_STAGES {2}
     CONFIG.ACLK_RATIO {2:1}
 } [get_ips $axi_clock_converter]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

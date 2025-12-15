@@ -18,16 +18,27 @@
 `include "open_nic_shell_macros.vh"
 `timescale 1ns/1ps
 module open_nic_shell #(
-  parameter [31:0] BUILD_TIMESTAMP = 32'h01010000,
-  parameter int    MIN_PKT_LEN     = 64,
-  parameter int    MAX_PKT_LEN     = 1518,
-  parameter int    USE_PHYS_FUNC   = 1,
-  parameter int    NUM_PHYS_FUNC   = 1,
-  parameter int    NUM_QUEUE       = 512,
-  parameter int    NUM_QDMA        = 1,
-  parameter int    NUM_CMAC_PORT   = 1
+  parameter logic [31:0] BUILD_TIMESTAMP = 32'h01010000,
+  parameter int          MIN_PKT_LEN     = 64,
+  parameter int          MAX_PKT_LEN     = 1518,
+  parameter int          USE_PHYS_FUNC   = 1,
+  parameter int          NUM_PHYS_FUNC   = 1,
+  parameter int          NUM_QUEUE       = 512,
+  parameter int          NUM_QDMA        = 1,
+  parameter int          NUM_CMAC_PORT   = 1,
+
+  // Replication parameters
+  parameter logic [31:0] NODE_IP         = 32'hC0643300,
+  parameter logic [47:0] NODE_MAC        = 48'h020A35070000,
+  parameter int          MAX_NODES       = 32,
+  parameter int          BUCKET_SIZE     = 1024,
+
+  // Leader election parameters
+  parameter int          USE_CONTROLLER  = 1,
+  parameter int          TIMER_WIDTH     = 30,  // ~4.2 s
+  parameter int          SEED            = 32'hdeadbeef,  // Used in RNG
+  parameter logic [TIMER_WIDTH-1:0] TAP_MASK = 30'h60000000
 ) (
-`ifdef __synthesis__
 
 // Fix the CATTRIP issue for AU280, AU50, AU55C, and AU55N custom flow
 `ifdef __au280__
@@ -79,79 +90,14 @@ module open_nic_shell #(
   input        [NUM_QDMA-1:0] pcie_refclk_n,
   input        [NUM_QDMA-1:0] pcie_rstn,
 
-  input    [4*NUM_CMAC_PORT-1:0] qsfp_rxp,
-  input    [4*NUM_CMAC_PORT-1:0] qsfp_rxn,
-  output   [4*NUM_CMAC_PORT-1:0] qsfp_txp,
-  output   [4*NUM_CMAC_PORT-1:0] qsfp_txn,
-
 `ifdef __au45n__
-  input                          dual0_gt_ref_clk_p,
-  input                          dual0_gt_ref_clk_n,
-  input                          dual1_gt_ref_clk_p,
-  input                          dual1_gt_ref_clk_n,
+  input                       dual0_gt_ref_clk_p,
+  input                       dual0_gt_ref_clk_n,
+  input                       dual1_gt_ref_clk_p,
+  input                       dual1_gt_ref_clk_n,
 `endif
 
-  input      [NUM_CMAC_PORT-1:0] qsfp_refclk_p,
-  input      [NUM_CMAC_PORT-1:0] qsfp_refclk_n
-
-`else // !`ifdef __synthesis__
-  input     [NUM_QDMA-1:0] s_axil_sim_awvalid,
-  input  [32*NUM_QDMA-1:0] s_axil_sim_awaddr,
-  output    [NUM_QDMA-1:0] s_axil_sim_awready,
-  input     [NUM_QDMA-1:0] s_axil_sim_wvalid,
-  input  [32*NUM_QDMA-1:0] s_axil_sim_wdata,
-  output    [NUM_QDMA-1:0] s_axil_sim_wready,
-  output    [NUM_QDMA-1:0] s_axil_sim_bvalid,
-  output  [2*NUM_QDMA-1:0] s_axil_sim_bresp,
-  input     [NUM_QDMA-1:0] s_axil_sim_bready,
-  input     [NUM_QDMA-1:0] s_axil_sim_arvalid,
-  input  [32*NUM_QDMA-1:0] s_axil_sim_araddr,
-  output    [NUM_QDMA-1:0] s_axil_sim_arready,
-  output    [NUM_QDMA-1:0] s_axil_sim_rvalid,
-  output [32*NUM_QDMA-1:0] s_axil_sim_rdata,
-  output  [2*NUM_QDMA-1:0] s_axil_sim_rresp,
-  input     [NUM_QDMA-1:0] s_axil_sim_rready,
-
-  input      [NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tvalid,
-  input  [512*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tdata,
-  input   [32*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tcrc,
-  input      [NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tlast,
-  input   [11*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_qid,
-  input    [3*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_port_id,
-  input      [NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_err,
-  input   [32*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_mdata,
-  input    [6*NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_mty,
-  input      [NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tuser_zero_byte,
-  output     [NUM_QDMA-1:0] s_axis_qdma_h2c_sim_tready,
-
-  output     [NUM_QDMA-1:0] m_axis_qdma_c2h_sim_tvalid,
-  output [512*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_tdata,
-  output  [32*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_tcrc,
-  output     [NUM_QDMA-1:0] m_axis_qdma_c2h_sim_tlast,
-  output     [NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_marker,
-  output   [3*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_port_id,
-  output   [7*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_ecc,
-  output  [16*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_len,
-  output  [11*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_qid,
-  output     [NUM_QDMA-1:0] m_axis_qdma_c2h_sim_ctrl_has_cmpt,
-  output   [6*NUM_QDMA-1:0] m_axis_qdma_c2h_sim_mty,
-  input      [NUM_QDMA-1:0] m_axis_qdma_c2h_sim_tready,
-
-  output     [NUM_QDMA-1:0] m_axis_qdma_cpl_sim_tvalid,
-  output [512*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_tdata,
-  output   [2*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_size,
-  output  [16*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_dpar,
-  output  [11*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_qid,
-  output   [2*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_cmpt_type,
-  output  [16*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_wait_pld_pkt_id,
-  output   [3*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_port_id,
-  output     [NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_marker,
-  output     [NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_user_trig,
-  output   [3*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_col_idx,
-  output   [3*NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_err_idx,
-  output     [NUM_QDMA-1:0] m_axis_qdma_cpl_sim_ctrl_no_wrb_marker,
-  input      [NUM_QDMA-1:0] m_axis_qdma_cpl_sim_tready,
-
+`ifdef __simulation__
   output     [NUM_CMAC_PORT-1:0] m_axis_cmac_tx_sim_tvalid,
   output [512*NUM_CMAC_PORT-1:0] m_axis_cmac_tx_sim_tdata,
   output  [64*NUM_CMAC_PORT-1:0] m_axis_cmac_tx_sim_tkeep,
@@ -163,9 +109,15 @@ module open_nic_shell #(
   input  [512*NUM_CMAC_PORT-1:0] s_axis_cmac_rx_sim_tdata,
   input   [64*NUM_CMAC_PORT-1:0] s_axis_cmac_rx_sim_tkeep,
   input      [NUM_CMAC_PORT-1:0] s_axis_cmac_rx_sim_tlast,
-  input      [NUM_CMAC_PORT-1:0] s_axis_cmac_rx_sim_tuser_err,
+  input      [NUM_CMAC_PORT-1:0] s_axis_cmac_rx_sim_tuser_err
+`else
+  input    [4*NUM_CMAC_PORT-1:0] qsfp_rxp,
+  input    [4*NUM_CMAC_PORT-1:0] qsfp_rxn,
+  output   [4*NUM_CMAC_PORT-1:0] qsfp_txp,
+  output   [4*NUM_CMAC_PORT-1:0] qsfp_txn,
 
-  input  [NUM_QDMA-1:0] powerup_rstn
+  input      [NUM_CMAC_PORT-1:0] qsfp_refclk_p,
+  input      [NUM_CMAC_PORT-1:0] qsfp_refclk_n
 `endif
 );
 
@@ -195,8 +147,6 @@ module open_nic_shell #(
       $fatal("[%m] Number of CMACs should be within the range [1, 2]");
     end
   end
-
-`ifdef __synthesis__
 
   wire [16*NUM_QDMA-1:0] qdma_pcie_rxp;
   wire [16*NUM_QDMA-1:0] qdma_pcie_rxn;
@@ -254,7 +204,6 @@ module open_nic_shell #(
 `ifdef __zynq_family__
   zynq_usplus_ps zynq_usplus_ps_inst ();
 `endif
-`endif
 
   wire       [NUM_QDMA-1:0] axil_qdma_awvalid;
   wire    [32*NUM_QDMA-1:0] axil_qdma_awaddr;
@@ -272,6 +221,23 @@ module open_nic_shell #(
   wire    [32*NUM_QDMA-1:0] axil_qdma_rdata;
   wire     [2*NUM_QDMA-1:0] axil_qdma_rresp;
   wire       [NUM_QDMA-1:0] axil_qdma_rready;
+
+  wire           axil_qdma_csr_awvalid;
+  wire   [31:0]  axil_qdma_csr_awaddr;
+  wire           axil_qdma_csr_awready;
+  wire           axil_qdma_csr_wvalid;
+  wire   [31:0]  axil_qdma_csr_wdata;
+  wire           axil_qdma_csr_wready;
+  wire           axil_qdma_csr_bvalid;
+  wire    [1:0]  axil_qdma_csr_bresp;
+  wire           axil_qdma_csr_bready;
+  wire           axil_qdma_csr_arvalid;
+  wire   [31:0]  axil_qdma_csr_araddr;
+  wire           axil_qdma_csr_arready;
+  wire           axil_qdma_csr_rvalid;
+  wire   [31:0]  axil_qdma_csr_rdata;
+  wire    [1:0]  axil_qdma_csr_rresp;
+  wire           axil_qdma_csr_rready;
 
   wire     [NUM_CMAC_PORT-1:0] axil_adap_awvalid;
   wire  [32*NUM_CMAC_PORT-1:0] axil_adap_awaddr;
@@ -341,7 +307,7 @@ module open_nic_shell #(
   wire                   [1:0] axil_box1_rresp;
   wire                         axil_box1_rready;
 
-  // QDMA subsystem interfaces to the box running at 250MHz
+  // QDMA subsystem interfaces to the HBM subsystem
   wire     [NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_h2c_tvalid;
   wire [512*NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_h2c_tdata;
   wire  [64*NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_h2c_tkeep;
@@ -359,6 +325,25 @@ module open_nic_shell #(
   wire  [16*NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_c2h_tuser_src;
   wire  [16*NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_c2h_tuser_dst;
   wire     [NUM_PHYS_FUNC*NUM_QDMA-1:0] axis_qdma_c2h_tready;
+
+  // HBM subsystem interfaces to the box running at 250Mhz
+  wire         axis_hbm_h2c_tvalid;
+  wire [511:0] axis_hbm_h2c_tdata;
+  wire  [63:0] axis_hbm_h2c_tkeep;
+  wire         axis_hbm_h2c_tlast;
+  wire  [15:0] axis_hbm_h2c_tuser_size;
+  wire  [15:0] axis_hbm_h2c_tuser_src;
+  wire  [15:0] axis_hbm_h2c_tuser_dst;
+  wire         axis_hbm_h2c_tready;
+
+  wire         axis_hbm_c2h_tvalid;
+  wire [511:0] axis_hbm_c2h_tdata;
+  wire  [63:0] axis_hbm_c2h_tkeep;
+  wire         axis_hbm_c2h_tlast;
+  wire  [15:0] axis_hbm_c2h_tuser_size;
+  wire  [15:0] axis_hbm_c2h_tuser_src;
+  wire  [15:0] axis_hbm_c2h_tuser_dst;
+  wire         axis_hbm_c2h_tready;
 
   // Packet adapter interfaces to the box running at 250MHz
   wire     [NUM_CMAC_PORT-1:0] axis_adap_tx_250mhz_tvalid;
@@ -406,6 +391,94 @@ module open_nic_shell #(
   wire  [64*NUM_CMAC_PORT-1:0] axis_cmac_rx_tkeep;
   wire     [NUM_CMAC_PORT-1:0] axis_cmac_rx_tlast;
   wire     [NUM_CMAC_PORT-1:0] axis_cmac_rx_tuser_err;
+
+// QDMA AXI interface to the HBM subsystem
+  wire                  [63:0] axi_qdma_mm_araddr;
+  wire                   [1:0] axi_qdma_mm_arburst;
+  wire                   [3:0] axi_qdma_mm_arcache;
+  wire                   [3:0] axi_qdma_mm_arid;
+  wire                   [7:0] axi_qdma_mm_arlen;
+  wire                   [0:0] axi_qdma_mm_arlock;
+  wire                   [2:0] axi_qdma_mm_arprot;
+  wire                   [3:0] axi_qdma_mm_arqos;
+  wire                         axi_qdma_mm_arready;
+  wire                   [2:0] axi_qdma_mm_arsize;
+  wire                  [31:0] axi_qdma_mm_aruser;
+  wire                         axi_qdma_mm_arvalid;
+  wire                  [63:0] axi_qdma_mm_awaddr;
+  wire                   [1:0] axi_qdma_mm_awburst;
+  wire                   [3:0] axi_qdma_mm_awcache;
+  wire                   [3:0] axi_qdma_mm_awid;
+  wire                   [7:0] axi_qdma_mm_awlen;
+  wire                   [0:0] axi_qdma_mm_awlock;
+  wire                   [2:0] axi_qdma_mm_awprot;
+  wire                   [3:0] axi_qdma_mm_awqos;
+  wire                         axi_qdma_mm_awready;
+  wire                   [2:0] axi_qdma_mm_awsize;
+  wire                  [31:0] axi_qdma_mm_awuser;
+  wire                         axi_qdma_mm_awvalid;
+  wire                   [3:0] axi_qdma_mm_bid;
+  wire                         axi_qdma_mm_bready;
+  wire                   [1:0] axi_qdma_mm_bresp;
+  wire                         axi_qdma_mm_bvalid;
+  wire                 [511:0] axi_qdma_mm_rdata;
+  wire                   [3:0] axi_qdma_mm_rid;
+  wire                         axi_qdma_mm_rlast;
+  wire                         axi_qdma_mm_rready;
+  wire                   [1:0] axi_qdma_mm_rresp;
+  wire                         axi_qdma_mm_rvalid;
+  wire                 [511:0] axi_qdma_mm_wdata;
+  wire                         axi_qdma_mm_wlast;
+  wire                         axi_qdma_mm_wready;
+  wire                  [63:0] axi_qdma_mm_wstrb;
+  wire                  [63:0] axi_qdma_mm_wuser;
+  wire                         axi_qdma_mm_wvalid;
+
+  // AXI MM interface used to access the system memory (s_axib_* of the QDMA IP)
+  logic   [2 : 0] axi_sys_mem_awid;
+  logic  [63 : 0] axi_sys_mem_awaddr;
+  logic   [7 : 0] axi_sys_mem_awlen;
+  logic   [2 : 0] axi_sys_mem_awsize;
+  logic   [1 : 0] axi_sys_mem_awburst;
+  logic           axi_sys_mem_awlock;
+  logic   [3 : 0] axi_sys_mem_awqos;
+  logic   [3 : 0] axi_sys_mem_awregion;
+  logic   [3 : 0] axi_sys_mem_awcache;
+  logic   [2 : 0] axi_sys_mem_awprot;
+  logic           axi_sys_mem_awvalid;
+  logic           axi_sys_mem_awready;
+  logic [511 : 0] axi_sys_mem_wdata;
+  logic  [63 : 0] axi_sys_mem_wstrb;
+  logic           axi_sys_mem_wlast;
+  logic           axi_sys_mem_wvalid;
+  logic           axi_sys_mem_wready;
+  logic   [3 : 0] axi_sys_mem_bid;
+  logic   [1 : 0] axi_sys_mem_bresp;
+  logic           axi_sys_mem_bvalid;
+  logic           axi_sys_mem_bready;
+  logic   [2 : 0] axi_sys_mem_arid;
+  logic  [63 : 0] axi_sys_mem_araddr;
+  logic   [7 : 0] axi_sys_mem_arlen;
+  logic   [2 : 0] axi_sys_mem_arsize;
+  logic   [1 : 0] axi_sys_mem_arburst;
+  logic           axi_sys_mem_arlock;
+  logic   [3 : 0] axi_sys_mem_arqos;
+  logic   [3 : 0] axi_sys_mem_arregion;
+  logic   [3 : 0] axi_sys_mem_arcache;
+  logic   [2 : 0] axi_sys_mem_arprot;
+  logic           axi_sys_mem_arvalid;
+  logic           axi_sys_mem_arready;
+  logic   [3 : 0] axi_sys_mem_rid;
+  logic [511 : 0] axi_sys_mem_rdata;
+  logic   [1 : 0] axi_sys_mem_rresp;
+  logic           axi_sys_mem_rlast;
+  logic           axi_sys_mem_rvalid;
+  logic           axi_sys_mem_rready;
+  logic  [63 : 0] axi_sys_mem_wuser;
+  logic  [63 : 0] axi_sys_mem_ruser;
+  logic  [11 : 0] axi_sys_mem_awuser;
+  logic  [11 : 0] axi_sys_mem_aruser;
+
 
   wire                  [31:0] shell_rstn;
   wire                  [31:0] shell_rst_done;
@@ -493,8 +566,8 @@ module open_nic_shell #(
 `else
   assign qdma_pcie_rxp       = pcie_rxp;
   assign qdma_pcie_rxn       = pcie_rxn;
-  assign qdma_pcie_txp       = pcie_txp;
-  assign qdma_pcie_txn       = pcie_txn;
+  assign pcie_txp            = qdma_pcie_txp;
+  assign pcie_txn            = qdma_pcie_txn;
 `endif
 
   system_config #(
@@ -502,7 +575,6 @@ module open_nic_shell #(
     .NUM_QDMA        (NUM_QDMA),
     .NUM_CMAC_PORT   (NUM_CMAC_PORT)
   ) system_config_inst (
-`ifdef __synthesis__
     .s_axil_awvalid      (axil_pcie_awvalid),
     .s_axil_awaddr       (axil_pcie_awaddr),
     .s_axil_awready      (axil_pcie_awready),
@@ -519,24 +591,6 @@ module open_nic_shell #(
     .s_axil_rdata        (axil_pcie_rdata),
     .s_axil_rresp        (axil_pcie_rresp),
     .s_axil_rready       (axil_pcie_rready),
-`else // !`ifdef __synthesis__
-    .s_axil_awvalid      (s_axil_sim_awvalid),
-    .s_axil_awaddr       (s_axil_sim_awaddr),
-    .s_axil_awready      (s_axil_sim_awready),
-    .s_axil_wvalid       (s_axil_sim_wvalid),
-    .s_axil_wdata        (s_axil_sim_wdata),
-    .s_axil_wready       (s_axil_sim_wready),
-    .s_axil_bvalid       (s_axil_sim_bvalid),
-    .s_axil_bresp        (s_axil_sim_bresp),
-    .s_axil_bready       (s_axil_sim_bready),
-    .s_axil_arvalid      (s_axil_sim_arvalid),
-    .s_axil_araddr       (s_axil_sim_araddr),
-    .s_axil_arready      (s_axil_sim_arready),
-    .s_axil_rvalid       (s_axil_sim_rvalid),
-    .s_axil_rdata        (s_axil_sim_rdata),
-    .s_axil_rresp        (s_axil_sim_rresp),
-    .s_axil_rready       (s_axil_sim_rready),
-`endif
 
     .m_axil_qdma_awvalid (axil_qdma_awvalid),
     .m_axil_qdma_awaddr  (axil_qdma_awaddr),
@@ -554,6 +608,23 @@ module open_nic_shell #(
     .m_axil_qdma_rdata   (axil_qdma_rdata),
     .m_axil_qdma_rresp   (axil_qdma_rresp),
     .m_axil_qdma_rready  (axil_qdma_rready),
+
+    .m_axil_qdma_csr_awvalid  (  axil_qdma_csr_awvalid     )  ,
+    .m_axil_qdma_csr_awaddr  (   axil_qdma_csr_awaddr      )  ,
+    .m_axil_qdma_csr_awready  (  axil_qdma_csr_awready     )  ,
+    .m_axil_qdma_csr_wvalid  (   axil_qdma_csr_wvalid      )  ,
+    .m_axil_qdma_csr_wdata  (    axil_qdma_csr_wdata     )  ,
+    .m_axil_qdma_csr_wready  (   axil_qdma_csr_wready      )  ,
+    .m_axil_qdma_csr_bvalid  (   axil_qdma_csr_bvalid      )  ,
+    .m_axil_qdma_csr_bresp  (    axil_qdma_csr_bresp     )  ,
+    .m_axil_qdma_csr_bready  (   axil_qdma_csr_bready      )  ,
+    .m_axil_qdma_csr_arvalid  (  axil_qdma_csr_arvalid     )  ,
+    .m_axil_qdma_csr_araddr  (   axil_qdma_csr_araddr      )  ,
+    .m_axil_qdma_csr_arready  (  axil_qdma_csr_arready     )  ,
+    .m_axil_qdma_csr_rvalid  (   axil_qdma_csr_rvalid      )  ,
+    .m_axil_qdma_csr_rdata  (    axil_qdma_csr_rdata     )  ,
+    .m_axil_qdma_csr_rresp  (    axil_qdma_csr_rresp     )  ,
+    .m_axil_qdma_csr_rready  (   axil_qdma_csr_rready      )  ,
 
     .m_axil_adap_awvalid (axil_adap_awvalid),
     .m_axil_adap_awaddr  (axil_adap_awaddr),
@@ -630,7 +701,10 @@ module open_nic_shell #(
 
     .satellite_uart_0_rxd (satellite_uart_0_rxd),
     .satellite_uart_0_txd (satellite_uart_0_txd),
+
+  `ifndef __simulation__
     .satellite_gpio_0     (satellite_gpio),
+  `endif
 
   `ifdef __au280__
     .hbm_temp_1_0            (7'd0),
@@ -670,7 +744,6 @@ module open_nic_shell #(
 
   generate for (genvar i = 0; i < NUM_QDMA; i++) begin: qdma_if
     qdma_subsystem #(
-      .QDMA_ID       (i),
       .MIN_PKT_LEN   (MIN_PKT_LEN),
       .MAX_PKT_LEN   (MAX_PKT_LEN),
       .USE_PHYS_FUNC (USE_PHYS_FUNC),
@@ -712,7 +785,46 @@ module open_nic_shell #(
       .s_axis_c2h_tuser_dst                 (axis_qdma_c2h_tuser_dst[`getvec(16*NUM_PHYS_FUNC, i)]),
       .s_axis_c2h_tready                    (axis_qdma_c2h_tready[`getvec(NUM_PHYS_FUNC, i)]),
 
-  `ifdef __synthesis__
+      // QDMA DMA Engine - AXI MM interface
+      .m_axi_awready                        (axi_qdma_mm_awready),
+      .m_axi_wready                         (axi_qdma_mm_wready),
+      .m_axi_bid                            (axi_qdma_mm_bid),
+      .m_axi_bresp                          (axi_qdma_mm_bresp),
+      .m_axi_bvalid                         (axi_qdma_mm_bvalid),
+      .m_axi_arready                        (axi_qdma_mm_arready),
+      .m_axi_rid                            (axi_qdma_mm_rid),
+      .m_axi_rdata                          (axi_qdma_mm_rdata),
+      .m_axi_rresp                          (axi_qdma_mm_rresp),
+      .m_axi_rlast                          (axi_qdma_mm_rlast),
+      .m_axi_rvalid                         (axi_qdma_mm_rvalid),
+      .m_axi_awid                           (axi_qdma_mm_awid),
+      .m_axi_awaddr                         (axi_qdma_mm_awaddr),
+      .m_axi_awuser                         (axi_qdma_mm_awuser),
+      .m_axi_awlen                          (axi_qdma_mm_awlen),
+      .m_axi_awsize                         (axi_qdma_mm_awsize),
+      .m_axi_awburst                        (axi_qdma_mm_awburst),
+      .m_axi_awprot                         (axi_qdma_mm_awprot),
+      .m_axi_awvalid                        (axi_qdma_mm_awvalid),
+      .m_axi_awlock                         (axi_qdma_mm_awlock),
+      .m_axi_awcache                        (axi_qdma_mm_awcache),
+      .m_axi_wdata                          (axi_qdma_mm_wdata),
+      .m_axi_wuser                          (axi_qdma_mm_wuser),
+      .m_axi_wstrb                          (axi_qdma_mm_wstrb),
+      .m_axi_wlast                          (axi_qdma_mm_wlast),
+      .m_axi_wvalid                         (axi_qdma_mm_wvalid),
+      .m_axi_bready                         (axi_qdma_mm_bready),
+      .m_axi_arid                           (axi_qdma_mm_arid),
+      .m_axi_araddr                         (axi_qdma_mm_araddr),
+      .m_axi_aruser                         (axi_qdma_mm_aruser),
+      .m_axi_arlen                          (axi_qdma_mm_arlen),
+      .m_axi_arsize                         (axi_qdma_mm_arsize),
+      .m_axi_arburst                        (axi_qdma_mm_arburst),
+      .m_axi_arprot                         (axi_qdma_mm_arprot),
+      .m_axi_arvalid                        (axi_qdma_mm_arvalid),
+      .m_axi_arlock                         (axi_qdma_mm_arlock),
+      .m_axi_arcache                        (axi_qdma_mm_arcache),
+      .m_axi_rready                         (axi_qdma_mm_rready),
+
       .pcie_rxp                             (qdma_pcie_rxp[`getvec(16, i)]),
       .pcie_rxn                             (qdma_pcie_rxn[`getvec(16, i)]),
       .pcie_txp                             (qdma_pcie_txp[`getvec(16, i)]),
@@ -735,59 +847,75 @@ module open_nic_shell #(
       .m_axil_pcie_rresp                    (axil_pcie_rresp[`getvec(2, i)]),
       .m_axil_pcie_rready                   (axil_pcie_rready[i]),
 
+      .s_csr_prog_done                      (qdma_csr_prog_done),
+      .s_axil_csr_awaddr                    (axil_qdma_csr_awaddr),
+      .s_axil_csr_awprot                    (3'd0),
+      .s_axil_csr_awvalid                   (axil_qdma_csr_awvalid),
+      .s_axil_csr_awready                   (axil_qdma_csr_awready),
+      .s_axil_csr_wdata                     (axil_qdma_csr_wdata),
+      .s_axil_csr_wstrb                     (4'hf),
+      .s_axil_csr_wvalid                    (axil_qdma_csr_wvalid),
+      .s_axil_csr_wready                    (axil_qdma_csr_wready),
+      .s_axil_csr_bvalid                    (axil_qdma_csr_bvalid),
+      .s_axil_csr_bresp                     (axil_qdma_csr_bresp),
+      .s_axil_csr_bready                    (axil_qdma_csr_bready),
+      .s_axil_csr_araddr                    (axil_qdma_csr_araddr),
+      .s_axil_csr_arprot                    (3'd0),
+      .s_axil_csr_arvalid                   (axil_qdma_csr_arvalid),
+      .s_axil_csr_arready                   (axil_qdma_csr_arready),
+      .s_axil_csr_rdata                     (axil_qdma_csr_rdata),
+      .s_axil_csr_rresp                     (axil_qdma_csr_rresp),
+      .s_axil_csr_rvalid                    (axil_qdma_csr_rvalid),
+      .s_axil_csr_rready                    (axil_qdma_csr_rready),
+
+      .s_axib_awid                          ({1'd0,axi_sys_mem_awid}),
+      .s_axib_awaddr                        (axi_sys_mem_awaddr),
+      .s_axib_awregion                      (axi_sys_mem_awregion),
+      .s_axib_awlen                         (axi_sys_mem_awlen),
+      .s_axib_awsize                        (axi_sys_mem_awsize),
+      .s_axib_awburst                       (axi_sys_mem_awburst),
+      .s_axib_awvalid                       (axi_sys_mem_awvalid),
+      .s_axib_wdata                         (axi_sys_mem_wdata),
+      .s_axib_wstrb                         (axi_sys_mem_wstrb),
+      .s_axib_wlast                         (axi_sys_mem_wlast),
+      .s_axib_wvalid                        (axi_sys_mem_wvalid),
+      .s_axib_wuser                         (axi_sys_mem_wuser),
+      .s_axib_ruser                         (axi_sys_mem_ruser),
+      .s_axib_bready                        (axi_sys_mem_bready),
+      .s_axib_arid                          ({1'd0,axi_sys_mem_arid}),
+      .s_axib_araddr                        (axi_sys_mem_araddr),
+      .s_axib_aruser                        (axi_sys_mem_aruser),
+      .s_axib_awuser                        (axi_sys_mem_awuser),
+      .s_axib_arregion                      (axi_sys_mem_arregion),
+      .s_axib_arlen                         (axi_sys_mem_arlen),
+      .s_axib_arsize                        (axi_sys_mem_arsize),
+      .s_axib_arburst                       (axi_sys_mem_arburst),
+      .s_axib_arvalid                       (axi_sys_mem_arvalid),
+      .s_axib_rready                        (axi_sys_mem_rready),
+      .s_axib_awready                       (axi_sys_mem_awready),
+      .s_axib_wready                        (axi_sys_mem_wready),
+      .s_axib_bid                           (axi_sys_mem_bid),
+      .s_axib_bresp                         (axi_sys_mem_bresp),
+      .s_axib_bvalid                        (axi_sys_mem_bvalid),
+      .s_axib_arready                       (axi_sys_mem_arready),
+      .s_axib_rid                           (axi_sys_mem_rid),
+      .s_axib_rdata                         (axi_sys_mem_rdata),
+      .s_axib_rresp                         (axi_sys_mem_rresp),
+      .s_axib_rlast                         (axi_sys_mem_rlast),
+      .s_axib_rvalid                        (axi_sys_mem_rvalid),
+
+
       .pcie_refclk_p                        (pcie_refclk_p[i]),
       .pcie_refclk_n                        (pcie_refclk_n[i]),
       .pcie_rstn                            (pcie_rstn_int[i]),
       .user_lnk_up                          (pcie_user_lnk_up[i]),
       .phy_ready                            (pcie_phy_ready[i]),
       .powerup_rstn                         (powerup_rstn[i]),
-  `else // !`ifdef __synthesis__
-      .s_axis_qdma_h2c_tvalid               (s_axis_qdma_h2c_sim_tvalid[i]),
-      .s_axis_qdma_h2c_tdata                (s_axis_qdma_h2c_sim_tdata[`getvec(512, i)]),
-      .s_axis_qdma_h2c_tcrc                 (s_axis_qdma_h2c_sim_tcrc[`getvec(32, i)]),
-      .s_axis_qdma_h2c_tlast                (s_axis_qdma_h2c_sim_tlast[i]),
-      .s_axis_qdma_h2c_tuser_qid            (s_axis_qdma_h2c_sim_tuser_qid[`getvec(11, i)]),
-      .s_axis_qdma_h2c_tuser_port_id        (s_axis_qdma_h2c_sim_tuser_port_id[`getvec(3, i)]),
-      .s_axis_qdma_h2c_tuser_err            (s_axis_qdma_h2c_sim_tuser_err[i]),
-      .s_axis_qdma_h2c_tuser_mdata          (s_axis_qdma_h2c_sim_tuser_mdata[`getvec(32, i)]),
-      .s_axis_qdma_h2c_tuser_mty            (s_axis_qdma_h2c_sim_tuser_mty[`getvec(6, i)]),
-      .s_axis_qdma_h2c_tuser_zero_byte      (s_axis_qdma_h2c_sim_tuser_zero_byte[i]),
-      .s_axis_qdma_h2c_tready               (s_axis_qdma_h2c_sim_tready[i]),
-
-      .m_axis_qdma_c2h_tvalid               (m_axis_qdma_c2h_sim_tvalid[i]),
-      .m_axis_qdma_c2h_tdata                (m_axis_qdma_c2h_sim_tdata[`getvec(512, i)]),
-      .m_axis_qdma_c2h_tcrc                 (m_axis_qdma_c2h_sim_tcrc[`getvec(32, i)]),
-      .m_axis_qdma_c2h_tlast                (m_axis_qdma_c2h_sim_tlast[i]),
-      .m_axis_qdma_c2h_ctrl_marker          (m_axis_qdma_c2h_sim_ctrl_marker[i]),
-      .m_axis_qdma_c2h_ctrl_port_id         (m_axis_qdma_c2h_sim_ctrl_port_id[`getvec(3, i)]),
-      .m_axis_qdma_c2h_ctrl_ecc             (m_axis_qdma_c2h_sim_ctrl_ecc[`getvec(7, i)]),
-      .m_axis_qdma_c2h_ctrl_len             (m_axis_qdma_c2h_sim_ctrl_len[`getvec(16, i)]),
-      .m_axis_qdma_c2h_ctrl_qid             (m_axis_qdma_c2h_sim_ctrl_qid[`getvec(11, i)]),
-      .m_axis_qdma_c2h_ctrl_has_cmpt        (m_axis_qdma_c2h_sim_ctrl_has_cmpt[i]),
-      .m_axis_qdma_c2h_mty                  (m_axis_qdma_c2h_sim_mty[`getvec(6, i)]),
-      .m_axis_qdma_c2h_tready               (m_axis_qdma_c2h_sim_tready[i]),
-
-      .m_axis_qdma_cpl_tvalid               (m_axis_qdma_cpl_sim_tvalid[i]),
-      .m_axis_qdma_cpl_tdata                (m_axis_qdma_cpl_sim_tdata[`getvec(512, i)]),
-      .m_axis_qdma_cpl_size                 (m_axis_qdma_cpl_sim_size[`getvec(2, i)]),
-      .m_axis_qdma_cpl_dpar                 (m_axis_qdma_cpl_sim_dpar[`getvec(16, i)]),
-      .m_axis_qdma_cpl_ctrl_qid             (m_axis_qdma_cpl_sim_ctrl_qid[`getvec(11, i)]),
-      .m_axis_qdma_cpl_ctrl_cmpt_type       (m_axis_qdma_cpl_sim_ctrl_cmpt_type[`getvec(2, i)]),
-      .m_axis_qdma_cpl_ctrl_wait_pld_pkt_id (m_axis_qdma_cpl_sim_ctrl_wait_pld_pkt_id[`getvec(16, i)]),
-      .m_axis_qdma_cpl_ctrl_port_id         (m_axis_qdma_cpl_sim_ctrl_port_id[`getvec(3, i)]),
-      .m_axis_qdma_cpl_ctrl_marker          (m_axis_qdma_cpl_sim_ctrl_marker[i]),
-      .m_axis_qdma_cpl_ctrl_user_trig       (m_axis_qdma_cpl_sim_ctrl_user_trig[i]),
-      .m_axis_qdma_cpl_ctrl_col_idx         (m_axis_qdma_cpl_sim_ctrl_col_idx[`getvec(3, i)]),
-      .m_axis_qdma_cpl_ctrl_err_idx         (m_axis_qdma_cpl_sim_ctrl_err_idx[`getvec(3, i)]),
-      .m_axis_qdma_cpl_ctrl_no_wrb_marker   (m_axis_qdma_cpl_sim_ctrl_no_wrb_marker[i]),
-      .m_axis_qdma_cpl_tready               (m_axis_qdma_cpl_sim_tready[i]),
-  `endif
 
       .mod_rstn                             (qdma_rstn[i]),
       .mod_rst_done                         (qdma_rst_done[i]),
 
-      .axil_cfg_aclk                        (axil_aclk[0]),
-      .axil_aclk                            (axil_aclk[i]),
+      .axil_aclk                            (axil_aclk[0]),
 
     `ifdef __au55n__
       .ref_clk_100mhz                       (ref_clk_100mhz),
@@ -798,11 +926,116 @@ module open_nic_shell #(
     `elsif __au280__
       .ref_clk_100mhz                       (ref_clk_100mhz),
     `endif
-      .axis_master_aclk                     (axis_aclk[0]),
-      .axis_aclk                            (axis_aclk[i])
+
+      .axis_aclk                            (axis_aclk[0])
     );
   end: qdma_if
   endgenerate
+
+  hbm_subsystem #(
+    .BUCKET_SIZE                      (BUCKET_SIZE),
+    .NODE_IP                          (NODE_IP),
+    .NODE_MAC                         (NODE_MAC)
+  ) hbm_subsystem_inst (
+    .s_axil_awvalid                   (axil_box0_awvalid),
+    .s_axil_awaddr                    (axil_box0_awaddr),
+    .s_axil_awready                   (axil_box0_awready),
+    .s_axil_wvalid                    (axil_box0_wvalid),
+    .s_axil_wdata                     (axil_box0_wdata),
+    .s_axil_wready                    (axil_box0_wready),
+    .s_axil_bvalid                    (axil_box0_bvalid),
+    .s_axil_bresp                     (axil_box0_bresp),
+    .s_axil_bready                    (axil_box0_bready),
+    .s_axil_arvalid                   (axil_box0_arvalid),
+    .s_axil_araddr                    (axil_box0_araddr),
+    .s_axil_arready                   (axil_box0_arready),
+    .s_axil_rvalid                    (axil_box0_rvalid),
+    .s_axil_rdata                     (axil_box0_rdata),
+    .s_axil_rresp                     (axil_box0_rresp),
+    .s_axil_rready                    (axil_box0_rready),
+
+    .s_axi_araddr                     (axi_qdma_mm_araddr),
+    .s_axi_arburst                    (axi_qdma_mm_arburst),
+    .s_axi_arcache                    (axi_qdma_mm_arcache),
+    .s_axi_arid                       (axi_qdma_mm_arid),
+    .s_axi_arlen                      (axi_qdma_mm_arlen),
+    .s_axi_arlock                     (axi_qdma_mm_arlock),
+    .s_axi_arprot                     (axi_qdma_mm_arprot),
+    .s_axi_arqos                      (axi_qdma_mm_arqos),
+    .s_axi_arready                    (axi_qdma_mm_arready),
+    .s_axi_arsize                     (axi_qdma_mm_arsize),
+    .s_axi_aruser                     (axi_qdma_mm_aruser),
+    .s_axi_arvalid                    (axi_qdma_mm_arvalid),
+    .s_axi_awaddr                     (axi_qdma_mm_awaddr),
+    .s_axi_awburst                    (axi_qdma_mm_awburst),
+    .s_axi_awcache                    (axi_qdma_mm_awcache),
+    .s_axi_awid                       (axi_qdma_mm_awid),
+    .s_axi_awlen                      (axi_qdma_mm_awlen),
+    .s_axi_awlock                     (axi_qdma_mm_awlock),
+    .s_axi_awprot                     (axi_qdma_mm_awprot),
+    .s_axi_awqos                      (axi_qdma_mm_awqos),
+    .s_axi_awready                    (axi_qdma_mm_awready),
+    .s_axi_awsize                     (axi_qdma_mm_awsize),
+    .s_axi_awuser                     (axi_qdma_mm_awuser),
+    .s_axi_awvalid                    (axi_qdma_mm_awvalid),
+    .s_axi_bid                        (axi_qdma_mm_bid),
+    .s_axi_bready                     (axi_qdma_mm_bready),
+    .s_axi_bresp                      (axi_qdma_mm_bresp),
+    .s_axi_bvalid                     (axi_qdma_mm_bvalid),
+    .s_axi_rdata                      (axi_qdma_mm_rdata),
+    .s_axi_rid                        (axi_qdma_mm_rid),
+    .s_axi_rlast                      (axi_qdma_mm_rlast),
+    .s_axi_rready                     (axi_qdma_mm_rready),
+    .s_axi_rresp                      (axi_qdma_mm_rresp),
+    .s_axi_rvalid                     (axi_qdma_mm_rvalid),
+    .s_axi_wdata                      (axi_qdma_mm_wdata),
+    .s_axi_wlast                      (axi_qdma_mm_wlast),
+    .s_axi_wready                     (axi_qdma_mm_wready),
+    .s_axi_wstrb                      (axi_qdma_mm_wstrb),
+    .s_axi_wuser                      (axi_qdma_mm_wuser),
+    .s_axi_wvalid                     (axi_qdma_mm_wvalid),
+
+    .s_axis_qdma_h2c_tvalid           (axis_qdma_h2c_tvalid),
+    .s_axis_qdma_h2c_tdata            (axis_qdma_h2c_tdata),
+    .s_axis_qdma_h2c_tkeep            (axis_qdma_h2c_tkeep),
+    .s_axis_qdma_h2c_tlast            (axis_qdma_h2c_tlast),
+    .s_axis_qdma_h2c_tuser_size       (axis_qdma_h2c_tuser_size),
+    .s_axis_qdma_h2c_tuser_src        (axis_qdma_h2c_tuser_src),
+    .s_axis_qdma_h2c_tuser_dst        (axis_qdma_h2c_tuser_dst),
+    .s_axis_qdma_h2c_tready           (axis_qdma_h2c_tready),
+
+    .m_axis_qdma_c2h_tvalid           (axis_qdma_c2h_tvalid),
+    .m_axis_qdma_c2h_tdata            (axis_qdma_c2h_tdata),
+    .m_axis_qdma_c2h_tkeep            (axis_qdma_c2h_tkeep),
+    .m_axis_qdma_c2h_tlast            (axis_qdma_c2h_tlast),
+    .m_axis_qdma_c2h_tuser_size       (axis_qdma_c2h_tuser_size),
+    .m_axis_qdma_c2h_tuser_src        (axis_qdma_c2h_tuser_src),
+    .m_axis_qdma_c2h_tuser_dst        (axis_qdma_c2h_tuser_dst),
+    .m_axis_qdma_c2h_tready           (axis_qdma_c2h_tready),
+
+    .m_axis_cmac_h2c_tvalid           (axis_hbm_h2c_tvalid),
+    .m_axis_cmac_h2c_tdata            (axis_hbm_h2c_tdata),
+    .m_axis_cmac_h2c_tkeep            (axis_hbm_h2c_tkeep),
+    .m_axis_cmac_h2c_tlast            (axis_hbm_h2c_tlast),
+    .m_axis_cmac_h2c_tuser_size       (axis_hbm_h2c_tuser_size),
+    .m_axis_cmac_h2c_tuser_src        (axis_hbm_h2c_tuser_src),
+    .m_axis_cmac_h2c_tuser_dst        (axis_hbm_h2c_tuser_dst),
+    .m_axis_cmac_h2c_tready           (axis_hbm_h2c_tready),
+
+    .s_axis_cmac_c2h_tvalid           (axis_hbm_c2h_tvalid),
+    .s_axis_cmac_c2h_tdata            (axis_hbm_c2h_tdata),
+    .s_axis_cmac_c2h_tkeep            (axis_hbm_c2h_tkeep),
+    .s_axis_cmac_c2h_tlast            (axis_hbm_c2h_tlast),
+    .s_axis_cmac_c2h_tuser_size       (axis_hbm_c2h_tuser_size),
+    .s_axis_cmac_c2h_tuser_src        (axis_hbm_c2h_tuser_src),
+    .s_axis_cmac_c2h_tuser_dst        (axis_hbm_c2h_tuser_dst),
+    .s_axis_cmac_c2h_tready           (axis_hbm_c2h_tready),
+    
+    .axis_aclk                        (axis_aclk[0]),
+    .axil_aclk                        (axil_aclk[0]),
+    .axi_rstn                         (sys_cfg_powerup_rstn),
+    .hbm_ref_clk                      (ref_clk_100mhz)
+  );
 
   generate for (genvar i = 0; i < NUM_CMAC_PORT; i++) begin: cmac_port
     packet_adapter #(
@@ -901,7 +1134,22 @@ module open_nic_shell #(
       .m_axis_cmac_rx_tlast         (axis_cmac_rx_tlast[i]),
       .m_axis_cmac_rx_tuser_err     (axis_cmac_rx_tuser_err[i]),
 
-`ifdef __synthesis__
+`ifdef __simulation__
+      .m_axis_cmac_tx_sim_tvalid    (m_axis_cmac_tx_sim_tvalid[i]),
+      .m_axis_cmac_tx_sim_tdata     (m_axis_cmac_tx_sim_tdata[`getvec(512, i)]),
+      .m_axis_cmac_tx_sim_tkeep     (m_axis_cmac_tx_sim_tkeep[`getvec(64, i)]),
+      .m_axis_cmac_tx_sim_tlast     (m_axis_cmac_tx_sim_tlast[i]),
+      .m_axis_cmac_tx_sim_tuser_err (m_axis_cmac_tx_sim_tuser_err[i]),
+      .m_axis_cmac_tx_sim_tready    (m_axis_cmac_tx_sim_tready[i]),
+
+      .s_axis_cmac_rx_sim_tvalid    (s_axis_cmac_rx_sim_tvalid[i]),
+      .s_axis_cmac_rx_sim_tdata     (s_axis_cmac_rx_sim_tdata[`getvec(512, i)]),
+      .s_axis_cmac_rx_sim_tkeep     (s_axis_cmac_rx_sim_tkeep[`getvec(64, i)]),
+      .s_axis_cmac_rx_sim_tlast     (s_axis_cmac_rx_sim_tlast[i]),
+      .s_axis_cmac_rx_sim_tuser_err (s_axis_cmac_rx_sim_tuser_err[i]),
+
+      .cmac_clk                     (cmac_clk[i]),
+`else
       .gt_rxp                       (qsfp_rxp[`getvec(4, i)]),
       .gt_rxn                       (qsfp_rxn[`getvec(4, i)]),
       .gt_txp                       (qsfp_txp[`getvec(4, i)]),
@@ -915,21 +1163,6 @@ module open_nic_shell #(
       .dual1_gt_ref_clk_p           (dual1_gt_ref_clk_p),
       .dual1_gt_ref_clk_n           (dual1_gt_ref_clk_n),
 `endif
-
-      .cmac_clk                     (cmac_clk[i]),
-`else
-      .m_axis_cmac_tx_sim_tvalid    (m_axis_cmac_tx_sim_tvalid[i]),
-      .m_axis_cmac_tx_sim_tdata     (m_axis_cmac_tx_sim_tdata[`getvec(512, i)]),
-      .m_axis_cmac_tx_sim_tkeep     (m_axis_cmac_tx_sim_tkeep[`getvec(64, i)]),
-      .m_axis_cmac_tx_sim_tlast     (m_axis_cmac_tx_sim_tlast[i]),
-      .m_axis_cmac_tx_sim_tuser_err (m_axis_cmac_tx_sim_tuser_err[i]),
-      .m_axis_cmac_tx_sim_tready    (m_axis_cmac_tx_sim_tready[i]),
-
-      .s_axis_cmac_rx_sim_tvalid    (s_axis_cmac_rx_sim_tvalid[i]),
-      .s_axis_cmac_rx_sim_tdata     (s_axis_cmac_rx_sim_tdata[`getvec(512, i)]),
-      .s_axis_cmac_rx_sim_tkeep     (s_axis_cmac_rx_sim_tkeep[`getvec(64, i)]),
-      .s_axis_cmac_rx_sim_tlast     (s_axis_cmac_rx_sim_tlast[i]),
-      .s_axis_cmac_rx_sim_tuser_err (s_axis_cmac_rx_sim_tuser_err[i]),
 
       .cmac_clk                     (cmac_clk[i]),
 `endif
@@ -949,40 +1182,40 @@ module open_nic_shell #(
     .NUM_QDMA      (NUM_QDMA),
     .NUM_CMAC_PORT (NUM_CMAC_PORT)
   ) box_250mhz_inst (
-    .s_axil_awvalid                   (axil_box0_awvalid),
-    .s_axil_awaddr                    (axil_box0_awaddr),
-    .s_axil_awready                   (axil_box0_awready),
-    .s_axil_wvalid                    (axil_box0_wvalid),
-    .s_axil_wdata                     (axil_box0_wdata),
-    .s_axil_wready                    (axil_box0_wready),
-    .s_axil_bvalid                    (axil_box0_bvalid),
-    .s_axil_bresp                     (axil_box0_bresp),
-    .s_axil_bready                    (axil_box0_bready),
-    .s_axil_arvalid                   (axil_box0_arvalid),
-    .s_axil_araddr                    (axil_box0_araddr),
-    .s_axil_arready                   (axil_box0_arready),
-    .s_axil_rvalid                    (axil_box0_rvalid),
-    .s_axil_rdata                     (axil_box0_rdata),
-    .s_axil_rresp                     (axil_box0_rresp),
-    .s_axil_rready                    (axil_box0_rready),
+    .s_axil_awvalid                   (),
+    .s_axil_awaddr                    (),
+    .s_axil_awready                   (),
+    .s_axil_wvalid                    (),
+    .s_axil_wdata                     (),
+    .s_axil_wready                    (),
+    .s_axil_bvalid                    (),
+    .s_axil_bresp                     (),
+    .s_axil_bready                    (),
+    .s_axil_arvalid                   (),
+    .s_axil_araddr                    (),
+    .s_axil_arready                   (),
+    .s_axil_rvalid                    (),
+    .s_axil_rdata                     (),
+    .s_axil_rresp                     (),
+    .s_axil_rready                    (),
 
-    .s_axis_qdma_h2c_tvalid           (axis_qdma_h2c_tvalid),
-    .s_axis_qdma_h2c_tdata            (axis_qdma_h2c_tdata),
-    .s_axis_qdma_h2c_tkeep            (axis_qdma_h2c_tkeep),
-    .s_axis_qdma_h2c_tlast            (axis_qdma_h2c_tlast),
-    .s_axis_qdma_h2c_tuser_size       (axis_qdma_h2c_tuser_size),
-    .s_axis_qdma_h2c_tuser_src        (axis_qdma_h2c_tuser_src),
-    .s_axis_qdma_h2c_tuser_dst        (axis_qdma_h2c_tuser_dst),
-    .s_axis_qdma_h2c_tready           (axis_qdma_h2c_tready),
+    .s_axis_qdma_h2c_tvalid           (axis_hbm_h2c_tvalid),
+    .s_axis_qdma_h2c_tdata            (axis_hbm_h2c_tdata),
+    .s_axis_qdma_h2c_tkeep            (axis_hbm_h2c_tkeep),
+    .s_axis_qdma_h2c_tlast            (axis_hbm_h2c_tlast),
+    .s_axis_qdma_h2c_tuser_size       (axis_hbm_h2c_tuser_size),
+    .s_axis_qdma_h2c_tuser_src        (axis_hbm_h2c_tuser_src),
+    .s_axis_qdma_h2c_tuser_dst        (axis_hbm_h2c_tuser_dst),
+    .s_axis_qdma_h2c_tready           (axis_hbm_h2c_tready),
 
-    .m_axis_qdma_c2h_tvalid           (axis_qdma_c2h_tvalid),
-    .m_axis_qdma_c2h_tdata            (axis_qdma_c2h_tdata),
-    .m_axis_qdma_c2h_tkeep            (axis_qdma_c2h_tkeep),
-    .m_axis_qdma_c2h_tlast            (axis_qdma_c2h_tlast),
-    .m_axis_qdma_c2h_tuser_size       (axis_qdma_c2h_tuser_size),
-    .m_axis_qdma_c2h_tuser_src        (axis_qdma_c2h_tuser_src),
-    .m_axis_qdma_c2h_tuser_dst        (axis_qdma_c2h_tuser_dst),
-    .m_axis_qdma_c2h_tready           (axis_qdma_c2h_tready),
+    .m_axis_qdma_c2h_tvalid           (axis_hbm_c2h_tvalid),
+    .m_axis_qdma_c2h_tdata            (axis_hbm_c2h_tdata),
+    .m_axis_qdma_c2h_tkeep            (axis_hbm_c2h_tkeep),
+    .m_axis_qdma_c2h_tlast            (axis_hbm_c2h_tlast),
+    .m_axis_qdma_c2h_tuser_size       (axis_hbm_c2h_tuser_size),
+    .m_axis_qdma_c2h_tuser_src        (axis_hbm_c2h_tuser_src),
+    .m_axis_qdma_c2h_tuser_dst        (axis_hbm_c2h_tuser_dst),
+    .m_axis_qdma_c2h_tready           (axis_hbm_c2h_tready),
 
     .m_axis_adap_tx_250mhz_tvalid     (axis_adap_tx_250mhz_tvalid),
     .m_axis_adap_tx_250mhz_tdata      (axis_adap_tx_250mhz_tdata),

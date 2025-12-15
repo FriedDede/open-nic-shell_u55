@@ -51,7 +51,22 @@ module cmac_subsystem #(
   output         m_axis_cmac_rx_tlast,
   output         m_axis_cmac_rx_tuser_err,
 
-`ifdef __synthesis__
+`ifdef __simulation__
+  output         m_axis_cmac_tx_sim_tvalid,
+  output [511:0] m_axis_cmac_tx_sim_tdata,
+  output  [63:0] m_axis_cmac_tx_sim_tkeep,
+  output         m_axis_cmac_tx_sim_tlast,
+  output         m_axis_cmac_tx_sim_tuser_err,
+  input          m_axis_cmac_tx_sim_tready,
+
+  input          s_axis_cmac_rx_sim_tvalid,
+  input  [511:0] s_axis_cmac_rx_sim_tdata,
+  input   [63:0] s_axis_cmac_rx_sim_tkeep,
+  input          s_axis_cmac_rx_sim_tlast,
+  input          s_axis_cmac_rx_sim_tuser_err,
+
+  output reg     cmac_clk,
+`else
   input    [3:0] gt_rxp,
   input    [3:0] gt_rxn,
   output   [3:0] gt_txp,
@@ -67,21 +82,6 @@ module cmac_subsystem #(
 `endif
 
   output         cmac_clk,
-`else
-  output         m_axis_cmac_tx_sim_tvalid,
-  output [511:0] m_axis_cmac_tx_sim_tdata,
-  output  [63:0] m_axis_cmac_tx_sim_tkeep,
-  output         m_axis_cmac_tx_sim_tlast,
-  output         m_axis_cmac_tx_sim_tuser_err,
-  input          m_axis_cmac_tx_sim_tready,
-
-  input          s_axis_cmac_rx_sim_tvalid,
-  input  [511:0] s_axis_cmac_rx_sim_tdata,
-  input   [63:0] s_axis_cmac_rx_sim_tkeep,
-  input          s_axis_cmac_rx_sim_tlast,
-  input          s_axis_cmac_rx_sim_tuser_err,
-
-  output reg     cmac_clk,
 `endif
 
   input          mod_rstn,
@@ -286,60 +286,7 @@ module cmac_subsystem #(
     .aresetn       (cmac_rstn)
   );
 
-`ifdef __synthesis__
-  cmac_subsystem_cmac_wrapper #(
-    .CMAC_ID (CMAC_ID)
-  ) cmac_wrapper_inst (
-    .gt_rxp              (gt_rxp),
-    .gt_rxn              (gt_rxn),
-    .gt_txp              (gt_txp),
-    .gt_txn              (gt_txn),
-
-`ifdef __au45n__
-    .dual0_gt_ref_clk_p (dual0_gt_ref_clk_p),
-    .dual0_gt_ref_clk_n (dual0_gt_ref_clk_n),
-    .dual1_gt_ref_clk_p (dual1_gt_ref_clk_p),
-    .dual1_gt_ref_clk_n (dual1_gt_ref_clk_n),
-`endif
-
-    .s_axil_awaddr       (axil_cmac_awaddr),
-    .s_axil_awvalid      (axil_cmac_awvalid),
-    .s_axil_awready      (axil_cmac_awready),
-    .s_axil_wdata        (axil_cmac_wdata),
-    .s_axil_wvalid       (axil_cmac_wvalid),
-    .s_axil_wready       (axil_cmac_wready),
-    .s_axil_bresp        (axil_cmac_bresp),
-    .s_axil_bvalid       (axil_cmac_bvalid),
-    .s_axil_bready       (axil_cmac_bready),
-    .s_axil_araddr       (axil_cmac_araddr),
-    .s_axil_arvalid      (axil_cmac_arvalid),
-    .s_axil_arready      (axil_cmac_arready),
-    .s_axil_rdata        (axil_cmac_rdata),
-    .s_axil_rresp        (axil_cmac_rresp),
-    .s_axil_rvalid       (axil_cmac_rvalid),
-    .s_axil_rready       (axil_cmac_rready),
-
-    .s_axis_tx_tvalid    (axis_cmac_tx_tvalid),
-    .s_axis_tx_tdata     (axis_cmac_tx_tdata),
-    .s_axis_tx_tkeep     (axis_cmac_tx_tkeep),
-    .s_axis_tx_tlast     (axis_cmac_tx_tlast),
-    .s_axis_tx_tuser_err (axis_cmac_tx_tuser_err),
-    .s_axis_tx_tready    (axis_cmac_tx_tready),
-
-    .m_axis_rx_tvalid    (axis_cmac_rx_tvalid),
-    .m_axis_rx_tdata     (axis_cmac_rx_tdata),
-    .m_axis_rx_tkeep     (axis_cmac_rx_tkeep),
-    .m_axis_rx_tlast     (axis_cmac_rx_tlast),
-    .m_axis_rx_tuser_err (axis_cmac_rx_tuser_err),
-
-    .gt_refclk_p         (gt_refclk_p),
-    .gt_refclk_n         (gt_refclk_n),
-    .cmac_clk            (cmac_clk),
-    .cmac_sys_reset      (~axil_aresetn),
-
-    .axil_aclk           (axil_aclk)
-  );
-`else // !`ifdef __synthesis__
+`ifdef __simulation__
   generate begin: cmac_sim
     if (CMAC_ID == 0) begin
       initial begin
@@ -397,6 +344,59 @@ module cmac_subsystem #(
   assign axis_cmac_rx_tkeep           = s_axis_cmac_rx_sim_tkeep;
   assign axis_cmac_rx_tlast           = s_axis_cmac_rx_sim_tlast;
   assign axis_cmac_rx_tuser_err       = s_axis_cmac_rx_sim_tuser_err;
+`else // !`ifdef __simulation__
+  cmac_subsystem_cmac_wrapper #(
+    .CMAC_ID (CMAC_ID)
+  ) cmac_wrapper_inst (
+    .gt_rxp              (gt_rxp),
+    .gt_rxn              (gt_rxn),
+    .gt_txp              (gt_txp),
+    .gt_txn              (gt_txn),
+
+`ifdef __au45n__
+    .dual0_gt_ref_clk_p (dual0_gt_ref_clk_p),
+    .dual0_gt_ref_clk_n (dual0_gt_ref_clk_n),
+    .dual1_gt_ref_clk_p (dual1_gt_ref_clk_p),
+    .dual1_gt_ref_clk_n (dual1_gt_ref_clk_n),
+`endif
+
+    .s_axil_awaddr       (axil_cmac_awaddr),
+    .s_axil_awvalid      (axil_cmac_awvalid),
+    .s_axil_awready      (axil_cmac_awready),
+    .s_axil_wdata        (axil_cmac_wdata),
+    .s_axil_wvalid       (axil_cmac_wvalid),
+    .s_axil_wready       (axil_cmac_wready),
+    .s_axil_bresp        (axil_cmac_bresp),
+    .s_axil_bvalid       (axil_cmac_bvalid),
+    .s_axil_bready       (axil_cmac_bready),
+    .s_axil_araddr       (axil_cmac_araddr),
+    .s_axil_arvalid      (axil_cmac_arvalid),
+    .s_axil_arready      (axil_cmac_arready),
+    .s_axil_rdata        (axil_cmac_rdata),
+    .s_axil_rresp        (axil_cmac_rresp),
+    .s_axil_rvalid       (axil_cmac_rvalid),
+    .s_axil_rready       (axil_cmac_rready),
+
+    .s_axis_tx_tvalid    (axis_cmac_tx_tvalid),
+    .s_axis_tx_tdata     (axis_cmac_tx_tdata),
+    .s_axis_tx_tkeep     (axis_cmac_tx_tkeep),
+    .s_axis_tx_tlast     (axis_cmac_tx_tlast),
+    .s_axis_tx_tuser_err (axis_cmac_tx_tuser_err),
+    .s_axis_tx_tready    (axis_cmac_tx_tready),
+
+    .m_axis_rx_tvalid    (axis_cmac_rx_tvalid),
+    .m_axis_rx_tdata     (axis_cmac_rx_tdata),
+    .m_axis_rx_tkeep     (axis_cmac_rx_tkeep),
+    .m_axis_rx_tlast     (axis_cmac_rx_tlast),
+    .m_axis_rx_tuser_err (axis_cmac_rx_tuser_err),
+
+    .gt_refclk_p         (gt_refclk_p),
+    .gt_refclk_n         (gt_refclk_n),
+    .cmac_clk            (cmac_clk),
+    .cmac_sys_reset      (~axil_aresetn),
+
+    .axil_aclk           (axil_aclk)
+  );
 `endif
 
 endmodule: cmac_subsystem
