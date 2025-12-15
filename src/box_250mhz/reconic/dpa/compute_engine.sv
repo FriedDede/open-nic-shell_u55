@@ -8,8 +8,9 @@
 `include "register_interface_typedef.svh"
 
 // Compute engine wrapper:
-// @ input: clk / rst
-// @ output: 64-bit AXI channels to the hbm memory, one per memory channel
+// @ input: core_clk
+// @ input: core_areset_n
+// @ output: 64-bit AXI channels to memory, one per memory channel
 // @ output: uart ? TODO: evaluate if needed
 // This module self-contains the RISC-V compute engine and all associated peripherals
 

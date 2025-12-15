@@ -15,6 +15,7 @@ localparam ce_DataWidth         = snitch_cluster_pkg::NarrowDataWidth;      // 6
 localparam ce_IdWidthCore       = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
 localparam ce_IdWidthToUncore   = ce_IdWidthCore + $clog2(3 * CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
 localparam ce_IdWidthToPerifs   = ce_IdWidthToUncore + $clog2(CLUSTER_NUMBER); 
+localparam ce_IdWidth_unif_dram   = ce_IdWidthToUncore + $clog2(CLUSTER_NUMBER); 
 localparam ce_UserWidth         = snitch_cluster_pkg::NarrowUserWidth;
 
 

@@ -5,7 +5,10 @@
 //==============================================================================
 `timescale 1ns/1ps
 
-module compute_logic_wrapper # (
+module compute_logic_wrapper
+  import axi_pkg::*;
+  import dpa_pkg::*; 
+# (
   parameter AXIL_ADDR_WIDTH  = 12,
   parameter AXIL_DATA_WIDTH  = 32,
   parameter AXIS_DATA_WIDTH  = 512,
@@ -30,43 +33,43 @@ module compute_logic_wrapper # (
   input         s_axil_rready,
   
   // master AXI interface for device memory access
-  output            m_axi_awid,
-  output   [63 : 0] m_axi_awaddr,
-  output    [3 : 0] m_axi_awqos,
-  output    [7 : 0] m_axi_awlen,
-  output    [2 : 0] m_axi_awsize,
-  output    [1 : 0] m_axi_awburst,
-  output    [3 : 0] m_axi_awcache,
-  output    [2 : 0] m_axi_awprot,
-  output            m_axi_awvalid,
-  input             m_axi_awready,
-  output  [511 : 0] m_axi_wdata,
-  output   [63 : 0] m_axi_wstrb,
-  output            m_axi_wlast,
-  output            m_axi_wvalid,
-  input             m_axi_wready,
-  output            m_axi_awlock,
-  input             m_axi_bid,
-  input     [1 : 0] m_axi_bresp,
-  input             m_axi_bvalid,
-  output            m_axi_bready,
-  output            m_axi_arid,
-  output   [63 : 0] m_axi_araddr,
-  output    [7 : 0] m_axi_arlen,
-  output    [2 : 0] m_axi_arsize,
-  output    [1 : 0] m_axi_arburst,
-  output    [3 : 0] m_axi_arcache,
-  output    [2 : 0] m_axi_arprot,
-  output            m_axi_arvalid,
-  input             m_axi_arready,
-  input             m_axi_rid,
-  input   [511 : 0] m_axi_rdata,
-  input     [1 : 0] m_axi_rresp,
-  input             m_axi_rlast,
-  input             m_axi_rvalid,
-  output            m_axi_rready,
-  output            m_axi_arlock,
-  output     [3:0]  m_axi_arqos,
+  output            m_axi_dram_awid,
+  output   [63 : 0] m_axi_dram_awaddr,
+  output    [3 : 0] m_axi_dram_awqos,
+  output    [7 : 0] m_axi_dram_awlen,
+  output    [2 : 0] m_axi_dram_awsize,
+  output    [1 : 0] m_axi_dram_awburst,
+  output    [3 : 0] m_axi_dram_awcache,
+  output    [2 : 0] m_axi_dram_awprot,
+  output            m_axi_dram_awvalid,
+  input             m_axi_dram_awready,
+  output  [511 : 0] m_axi_dram_wdata,
+  output   [63 : 0] m_axi_dram_wstrb,
+  output            m_axi_dram_wlast,
+  output            m_axi_dram_wvalid,
+  input             m_axi_dram_wready,
+  output            m_axi_dram_awlock,
+  input             m_axi_dram_bid,
+  input     [1 : 0] m_axi_dram_bresp,
+  input             m_axi_dram_bvalid,
+  output            m_axi_dram_bready,
+  output            m_axi_dram_arid,
+  output   [63 : 0] m_axi_dram_araddr,
+  output    [7 : 0] m_axi_dram_arlen,
+  output    [2 : 0] m_axi_dram_arsize,
+  output    [1 : 0] m_axi_dram_arburst,
+  output    [3 : 0] m_axi_dram_arcache,
+  output    [2 : 0] m_axi_dram_arprot,
+  output            m_axi_dram_arvalid,
+  input             m_axi_dram_arready,
+  input             m_axi_dram_rid,
+  input   [511 : 0] m_axi_dram_rdata,
+  input     [1 : 0] m_axi_dram_rresp,
+  input             m_axi_dram_rlast,
+  input             m_axi_dram_rvalid,
+  output            m_axi_dram_rready,
+  output            m_axi_dram_arlock,
+  output     [3:0]  m_axi_dram_arqos,
 
   input          axil_aclk,
   input          axil_rstn,
@@ -195,75 +198,163 @@ cl_box cl_box_wrapper (
   .work_id_ap_vld              (work_id_ap_vld)
 );
 
-mmult kernel_mmult (
-  //.ap_local_block   (),
-  //.ap_local_deadlock(),
-  .ap_clk           (axis_aclk),
-  .ap_rst_n         (axis_rstn),
-  .ap_start         (ap_start),
-  .ap_done          (ap_done),
-  .ap_idle          (ap_idle),
-  .ap_ready         (ap_ready),
-  .m_axi_systolic_AWVALID (m_axi_awvalid),
-  .m_axi_systolic_AWREADY (m_axi_awready),
-  .m_axi_systolic_AWADDR  (m_axi_awaddr),
-  .m_axi_systolic_AWID    (m_axi_awid),
-  .m_axi_systolic_AWLEN   (m_axi_awlen),
-  .m_axi_systolic_AWSIZE  (m_axi_awsize),
-  .m_axi_systolic_AWBURST (m_axi_awburst),
-  .m_axi_systolic_AWLOCK  (m_axi_awlock_tmp),
-  .m_axi_systolic_AWCACHE (m_axi_awcache),
-  .m_axi_systolic_AWPROT  (m_axi_awprot),
-  .m_axi_systolic_AWQOS   (m_axi_awqos),
-  .m_axi_systolic_AWREGION(),
-  .m_axi_systolic_AWUSER  (),
-  .m_axi_systolic_WVALID  (m_axi_wvalid),
-  .m_axi_systolic_WREADY  (m_axi_wready),
-  .m_axi_systolic_WDATA   (m_axi_wdata),
-  .m_axi_systolic_WSTRB   (m_axi_wstrb),
-  .m_axi_systolic_WLAST   (m_axi_wlast),
-  .m_axi_systolic_WID     (),
-  .m_axi_systolic_WUSER   (),
-  .m_axi_systolic_ARVALID (m_axi_arvalid),
-  .m_axi_systolic_ARREADY (m_axi_arready),
-  .m_axi_systolic_ARADDR  (m_axi_araddr),
-  .m_axi_systolic_ARID    (m_axi_arid),
-  .m_axi_systolic_ARLEN   (m_axi_arlen),
-  .m_axi_systolic_ARSIZE  (m_axi_arsize),
-  .m_axi_systolic_ARBURST (m_axi_arburst),
-  .m_axi_systolic_ARLOCK  (m_axi_arlock_tmp),
-  .m_axi_systolic_ARCACHE (m_axi_arcache),
-  .m_axi_systolic_ARPROT  (m_axi_arprot),
-  .m_axi_systolic_ARQOS   (m_axi_arqos),
-  .m_axi_systolic_ARREGION(),
-  .m_axi_systolic_ARUSER  (),
-  .m_axi_systolic_RVALID  (m_axi_rvalid),
-  .m_axi_systolic_RREADY  (m_axi_rready),
-  .m_axi_systolic_RDATA   (m_axi_rdata),
-  .m_axi_systolic_RLAST   (m_axi_rlast),
-  .m_axi_systolic_RID     (m_axi_rid),
-  .m_axi_systolic_RUSER   (),
-  .m_axi_systolic_RRESP   (m_axi_rresp),
-  .m_axi_systolic_BVALID  (m_axi_bvalid),
-  .m_axi_systolic_BREADY  (m_axi_bready),
-  .m_axi_systolic_BRESP   (m_axi_bresp),
-  .m_axi_systolic_BID     (m_axi_bid),
-  .m_axi_systolic_BUSER   (),
-  .work_id_out_stream_din   (ker_status_fifo_din),
-  .work_id_out_stream_full_n(ker_status_fifo_full_n),
-  .work_id_out_stream_write (ker_status_fifo_wr_en),
-  .a             (a_baseaddr_reg),
-  .b             (b_baseaddr_reg),
-  .c             (c_baseaddr_reg),
-  .a_row         (a_row_reg),
-  .a_row_ap_vld  (new_req_reg),
-  .a_col         (a_col_reg),
-  .a_col_ap_vld  (new_req_reg),
-  .b_col         (b_col_reg),
-  .b_col_ap_vld  (new_req_reg),
-  .work_id       (work_id_reg),
-  .work_id_ap_vld(new_req_reg)
+// mmult kernel_mmult (
+  //   //.ap_local_block   (),
+  //   //.ap_local_deadlock(),
+  //   .ap_clk           (axis_aclk),
+  //   .ap_rst_n         (axis_rstn),
+  //   .ap_start         (ap_start),
+  //   .ap_done          (ap_done),
+  //   .ap_idle          (ap_idle),
+  //   .ap_ready         (ap_ready),
+  //   .m_axi_systolic_AWVALID (m_axi_awvalid),
+  //   .m_axi_systolic_AWREADY (m_axi_awready),
+  //   .m_axi_systolic_AWADDR  (m_axi_awaddr),
+  //   .m_axi_systolic_AWID    (m_axi_awid),
+  //   .m_axi_systolic_AWLEN   (m_axi_awlen),
+  //   .m_axi_systolic_AWSIZE  (m_axi_awsize),
+  //   .m_axi_systolic_AWBURST (m_axi_awburst),
+  //   .m_axi_systolic_AWLOCK  (m_axi_awlock_tmp),
+  //   .m_axi_systolic_AWCACHE (m_axi_awcache),
+  //   .m_axi_systolic_AWPROT  (m_axi_awprot),
+  //   .m_axi_systolic_AWQOS   (m_axi_awqos),
+  //   .m_axi_systolic_AWREGION(),
+  //   .m_axi_systolic_AWUSER  (),
+  //   .m_axi_systolic_WVALID  (m_axi_wvalid),
+  //   .m_axi_systolic_WREADY  (m_axi_wready),
+  //   .m_axi_systolic_WDATA   (m_axi_wdata),
+  //   .m_axi_systolic_WSTRB   (m_axi_wstrb),
+  //   .m_axi_systolic_WLAST   (m_axi_wlast),
+  //   .m_axi_systolic_WID     (),
+  //   .m_axi_systolic_WUSER   (),
+  //   .m_axi_systolic_ARVALID (m_axi_arvalid),
+  //   .m_axi_systolic_ARREADY (m_axi_arready),
+  //   .m_axi_systolic_ARADDR  (m_axi_araddr),
+  //   .m_axi_systolic_ARID    (m_axi_arid),
+  //   .m_axi_systolic_ARLEN   (m_axi_arlen),
+  //   .m_axi_systolic_ARSIZE  (m_axi_arsize),
+  //   .m_axi_systolic_ARBURST (m_axi_arburst),
+  //   .m_axi_systolic_ARLOCK  (m_axi_arlock_tmp),
+  //   .m_axi_systolic_ARCACHE (m_axi_arcache),
+  //   .m_axi_systolic_ARPROT  (m_axi_arprot),
+  //   .m_axi_systolic_ARQOS   (m_axi_arqos),
+  //   .m_axi_systolic_ARREGION(),
+  //   .m_axi_systolic_ARUSER  (),
+  //   .m_axi_systolic_RVALID  (m_axi_rvalid),
+  //   .m_axi_systolic_RREADY  (m_axi_rready),
+  //   .m_axi_systolic_RDATA   (m_axi_rdata),
+  //   .m_axi_systolic_RLAST   (m_axi_rlast),
+  //   .m_axi_systolic_RID     (m_axi_rid),
+  //   .m_axi_systolic_RUSER   (),
+  //   .m_axi_systolic_RRESP   (m_axi_rresp),
+  //   .m_axi_systolic_BVALID  (m_axi_bvalid),
+  //   .m_axi_systolic_BREADY  (m_axi_bready),
+  //   .m_axi_systolic_BRESP   (m_axi_bresp),
+  //   .m_axi_systolic_BID     (m_axi_bid),
+  //   .m_axi_systolic_BUSER   (),
+  //   .work_id_out_stream_din   (ker_status_fifo_din),
+  //   .work_id_out_stream_full_n(ker_status_fifo_full_n),
+  //   .work_id_out_stream_write (ker_status_fifo_wr_en),
+  //   .a             (a_baseaddr_reg),
+  //   .b             (b_baseaddr_reg),
+  //   .c             (c_baseaddr_reg),
+  //   .a_row         (a_row_reg),
+  //   .a_row_ap_vld  (new_req_reg),
+  //   .a_col         (a_col_reg),
+  //   .a_col_ap_vld  (new_req_reg),
+  //   .b_col         (b_col_reg),
+  //   .b_col_ap_vld  (new_req_reg),
+  //   .work_id       (work_id_reg),
+  //   .work_id_ap_vld(new_req_reg)
+// );
+
+// ------------------------------------------------------------------
+// Compute subsystem
+// ------------------------------------------------------------------
+//`ifdef __synthesis__
+`include "axi_assign.svh"
+`include "axi_typedef.svh"
+
+logic ce_clk;
+logic internal_ce_rstn;
+logic pll_locked;
+
+// Compute engine clock domain
+dpa_pkg::axim64_core2mem_req_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_req;
+dpa_pkg::axim64_core2mem_resp_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_resp;
+
+// dram clock domain
+dpa_pkg::axim64_core2mem_req_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_mux_req;
+dpa_pkg::axim64_core2mem_resp_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_mux_resp;
+
+// dram clock domain
+dpa_pkg::axim64_core2mem_req_t m_axim_dram_req;
+dpa_pkg::axim64_core2mem_resp_t m_axim_dram_resp;
+
+for (genvar i = 0; i < dpa_pkg::DRAM_CH_NUMBER; i++) begin : dram_channels_cdc
+    axi_cdc #(
+      .aw_chan_t(axim64_core2mem_aw_chan_t),
+      .w_chan_t(axim64_core2mem_w_chan_t),
+      .b_chan_t(axim64_core2mem_b_chan_t),
+      .ar_chan_t(axim64_core2mem_ar_chan_t),
+      .r_chan_t(axim64_core2mem_r_chan_t),
+      .axi_req_t(dpa_pkg::axim64_core2mem_req_t),
+      .axi_resp_t(dpa_pkg::axim64_core2mem_resp_t),
+      .LogDepth(2),
+      .SyncStages(2)
+    ) axi_cdc_instance (
+      .src_clk_i(ce_clk),
+      .src_rst_ni(internal_ce_rstn),
+      .src_req_i(m_axim_ce2mem_req[i]),
+      .src_resp_o(m_axim_ce2mem_resp[i]),
+      .dst_clk_i(axis_aclk),
+      .dst_rst_ni(axil_rstn),
+      .dst_req_o(m_axim_mux_req[i]),
+      .dst_resp_i(m_axim_mux_resp[i])
+    );
+    
+end : dram_channels_cdc
+
+if (dpa_pkg::DRAM_CH_NUMBER > 1) begin
+  // TODO: multiple channel number support
+
+  // TODO: with multiple memory channels we should go directly into hbm
+  // need to ooutput the channels from the box and enter into hbm from the top,
+  // this solution will also bypass the memory 2 to 1 crossbar and enter the hbm directly
+  end else if (dpa_pkg::DRAM_CH_NUMBER == 1) begin
+
+  // TODO: datawidth conversion up to 256/512 bit ( maybe add a data cache?)
+   assign m_axim_dram_req = m_axim_mux_req[0];
+   assign m_axim_mux_resp = m_axim_dram_resp[0];
+end
+
+`AXI_ASSIGN_FLAT(m_axi_dram, m_axim_dram_req, m_axim_dram_resp)
+
+// Compute engine parameters are in dpa_pkg.sv
+compute_engine compute_engine_i (
+  .clk(ce_clk),
+  .core_areset_n(internal_ce_rstn),
+  .m_axim_ce2mem_req(m_axim_ce2mem_req),
+  .m_axim_ce2mem_resp(m_axim_ce2mem_resp),
+  .uart_rx ('0),
+  .uart_tx ()
 );
+
+// compute engine clock
+xlnx_clk_gen_solo i_xlnx_clk_gen (
+    .clk_out1 ( ce_clk      ),  // Core 50 MHz
+    .reset    ( ~axis_rstn  ),
+    .locked   ( pll_locked  ),
+    .clk_in1  ( axis_aclk   )   // 250 Mhz ref clk
+);
+
+rstgen i_rstgen_main (
+      .clk_i        ( ce_clk                    ),
+      .rst_ni       ( pll_locked & (!reset_core)  ),
+      .test_mode_i  ( '0                          ),
+      .rst_no       ( internal_ce_rstn            ),
+      .init_no      (                             ) // keep open
+  );
 
 assign new_req = cl_box_done;
 
@@ -315,7 +406,20 @@ always_ff @(posedge axis_aclk) begin
   end
 end
 
-assign m_axi_awlock = m_axi_awlock_tmp[0];
-assign m_axi_arlock = m_axi_arlock_tmp[0];
+assign m_axi_dram_awlock = m_axi_awlock_tmp[0];
+assign m_axi_dram_arlock = m_axi_arlock_tmp[0];
+
+// ------------------------------------------------------------------
+// DESIGN CONSTRAINT COMPLIANCE
+// ------------------------------------------------------------------
+
+// single channel memory 
+// TODO: Multi channel support
+initial begin
+  if (dpa_pkg::DRAM_CH_NUMBER != 1) begin
+    $fatal(1, "DRAM_CH_NUMBER must be equal to 1, as multichannel is not yet supported. Current value: %0d", dpa_pkg::DRAM_CH_NUMBER);
+  end
+end
+
 
 endmodule: compute_logic_wrapper

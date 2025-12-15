@@ -48,7 +48,53 @@
   .``pat``_AXI_0_rdata   (rsp.r.data  )        ,  \
   .``pat``_AXI_0_rresp   (rsp.r.resp  )        ,  \
   .``pat``_AXI_0_rlast   (rsp.r.last  )        
-//.``pat``_AXI_0_ruser   (rsp.r.user  )    
+//.``pat``_AXI_0_ruser   (rsp.r.user  )  
+
+`define AXI_ASSIGN_FLAT(pat, req, rsp) \
+  assign ``pat``_awvalid  = req.aw_valid       ;  \
+  assign ``pat``_awid     = req.aw.id          ;  \
+  assign ``pat``_awaddr   = {4'b00000, req.aw.addr[29:0]}  ;  \
+  assign ``pat``_awlen    = req.aw.len         ;  \
+  assign ``pat``_awsize   = req.aw.size        ;  \
+  assign ``pat``_awburst  = req.aw.burst       ;  \
+  assign ``pat``_awlock   = req.aw.lock        ;  \
+  assign ``pat``_awcache  = req.aw.cache       ;  \
+  assign ``pat``_awprot   = req.aw.prot        ;  \
+  assign ``pat``_awqos    = req.aw.qos         ;  \
+//assign ``pat``_awregion = req.aw.region      ;  \
+//assign ``pat``_awuser   = req.aw.user        ;  \
+  assign ``pat``_wvalid   = req.w_valid        ;  \
+  assign ``pat``_wdata    = req.w.data         ;  \
+  assign ``pat``_wstrb    = req.w.strb         ;  \
+  assign ``pat``_wlast    = req.w.last         ;  \
+//assign ``pat``_wuser    = req.w.user         ;  \
+  assign ``pat``_bready   = req.b_ready        ;  \
+  assign ``pat``_arvalid  = req.ar_valid       ;  \
+  assign ``pat``_arid     = req.ar.id          ;  \
+  assign ``pat``_araddr   = {4'b00000, req.ar.addr[29:0]}  ;  \
+  assign ``pat``_arlen    = req.ar.len         ;  \
+  assign ``pat``_arsize   = req.ar.size        ;  \
+  assign ``pat``_arburst  = req.ar.burst       ;  \
+  assign ``pat``_arlock   = req.ar.lock        ;  \
+  assign ``pat``_arcache  = req.ar.cache       ;  \
+  assign ``pat``_arprot   = req.ar.prot        ;  \
+  assign ``pat``_arqos    = req.ar.qos         ;  \
+//assign ``pat``_arregion = req.ar.region      ;  \
+//assign ``pat``_aruser   = req.ar.user        ;  \
+  assign ``pat``_rready   = req.r_ready        ;  \
+  assign ``pat``_awready  = rsp.aw_ready        ;  \
+  assign ``pat``_arready  = rsp.ar_ready        ;  \
+  assign ``pat``_wready   = rsp.w_ready         ;  \
+  assign ``pat``_bvalid   = rsp.b_valid         ;  \
+  assign ``pat``_bid      = rsp.b.id            ;  \
+  assign ``pat``_bresp    = rsp.b.resp          ;  \
+//assign ``pat``_buser    = rsp.b.user          ;  \
+  assign ``pat``_rvalid   = rsp.r_valid         ;  \
+  assign ``pat``_rid      = rsp.r.id            ;  \
+  assign ``pat``_rdata    = rsp.r.data          ;  \
+  assign ``pat``_rresp    = rsp.r.resp          ;  \
+  assign ``pat``_rlast    = rsp.r.last  ;        
+//assign ``pat``_ruser    = rsp.r.user    
 
 // adapter between snitch new axi interface and ariane old one
 `define AXI_ASSIGN_MASTER_TO_ARIANE_AXI_INT(slave, req, rsp) \
