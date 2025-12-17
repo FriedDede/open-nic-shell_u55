@@ -216,8 +216,8 @@ module cuckoo_hash # (
     logic read_possible;
     logic write_possible;
     for (int i = 0; i < NUM_FUNCTIONS; i++) begin
-      read_possible = stored_dirty[i] == DIRTY_TAG && stored_keys[i] == current_key;
-      write_possible = stored_dirty[i] != DIRTY_TAG || stored_keys[i] == current_key;
+      read_possible = stored_dirty[i] == VALID_TAG && stored_keys[i] == current_key;
+      write_possible = stored_dirty[i] != VALID_TAG || stored_keys[i] == current_key;
       if (read && read_possible || !read && write_possible) begin
         address = current_addresses[i];
         return 1'b1;
@@ -227,7 +227,7 @@ module cuckoo_hash # (
     return 1'b0;
   endfunction
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin :registers
     if (!rstn) begin
       state         <= IDLE;
       buf_in_state  <= BUF_IN_IDLE;
@@ -265,7 +265,7 @@ module cuckoo_hash # (
   end
 
   // Main state machine
-  always_comb begin
+  always_comb begin : main_fsm
     start_hbm_read          = 1'b0;
     start_hbm_write         = 1'b0;
     start_dm_read           = 1'b0;
@@ -287,8 +287,9 @@ module cuckoo_hash # (
     metadata_buf_next       = metadata_buf;
     metadata_out_valid      = 1'b0;
     metadata_out            = '0;
-    for (int i = 0; i < NUM_FUNCTIONS; i++)
+    for (int i = 0; i < NUM_FUNCTIONS; i++) begin
       current_addresses_next[i] = current_addresses_next[i];
+    end
     case (state)
       IDLE: begin
         start_buf_in   = 1'b1;
@@ -358,7 +359,7 @@ module cuckoo_hash # (
         if (dm_state == DM_DONE) begin
           state_next       = RECHECK;
           kick_count_next  = kick_count + 1;
-          current_key_next = stored_keys[kick_count[HASH_COUNT_WIDTH-1:0]];
+          current_key_next = stored_keys[kick_count];
           for (int i = 0; i < NUM_FUNCTIONS; i++)
             current_addresses_next[i] = hash(current_key_next, HASH_MATRIX[i]);
         end
@@ -388,7 +389,7 @@ module cuckoo_hash # (
   end
 
   // Buffer state machine
-  always_comb begin
+  always_comb begin : xpm_fifo_fsm
     buf_in_state_next      = buf_in_state;
     buf_out_state_next     = buf_out_state;
     axis_buffer_in_tvalid  = 1'b0;
@@ -478,7 +479,7 @@ module cuckoo_hash # (
   end
 
   // Datamover state machine
-  always_comb begin
+  always_comb begin :datamover_fsm
     dm_state_next             = dm_state;
     start_buf_in_from_dm      = 1'b0;
     start_buf_out_to_dm       = 1'b0;
@@ -531,7 +532,7 @@ module cuckoo_hash # (
   // HBM state machine
   genvar i;
   generate
-    for (i = 0; i < NUM_FUNCTIONS; i++) begin
+    for (i = 0; i < NUM_FUNCTIONS; i++) begin : hbm_parallel_fsm
       always_comb begin
         hbm_read_state_next[i]  = hbm_read_state[i];
         hbm_write_state_next[i] = hbm_write_state[i];

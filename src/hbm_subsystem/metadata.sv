@@ -1,7 +1,7 @@
 package metadata_pkg;
 
 parameter int KEY_WIDTH = 64;
-parameter logic [31:0] DIRTY_TAG = {<< 8 {32'hF0CACC1A}};
+parameter logic [31:0] VALID_TAG = {<< 8 {32'hF0CACC1A}};
 
 typedef enum logic [7:0] {
   READ              = 8'h00,

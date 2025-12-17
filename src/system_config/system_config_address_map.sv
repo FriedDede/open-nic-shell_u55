@@ -279,8 +279,8 @@ module system_config_address_map #(
   wire                [31:0] axil_scfg_araddr;
   wire                [31:0] axil_qdma0_awaddr;
   wire                [31:0] axil_qdma0_araddr;
-  wire                [31:0] axil_qdma1_awaddr;
-  wire                [31:0] axil_qdma1_araddr;
+  wire                [31:0] axil_qdma_csr_awaddr;
+  wire                [31:0] axil_qdma_csr_araddr;
   wire                [31:0] axil_cmac0_awaddr;
   wire                [31:0] axil_cmac0_araddr;
   wire                [31:0] axil_adap0_awaddr;
@@ -342,8 +342,8 @@ module system_config_address_map #(
   assign axil_scfg_araddr                      = axil_araddr[`getvec(32, C_SCFG_INDEX)] - C_SCFG_BASE_ADDR;
   assign axil_qdma0_awaddr                     = axil_awaddr[`getvec(32, C_QDMA0_INDEX)] - C_QDMA0_BASE_ADDR;
   assign axil_qdma0_araddr                     = axil_araddr[`getvec(32, C_QDMA0_INDEX)] - C_QDMA0_BASE_ADDR;
-  assign axil_qdma1_awaddr                     = axil_awaddr[`getvec(32, C_QDMA_CSR_INDEX)] - C_QDMA0_CSR_BASE;
-  assign axil_qdma1_araddr                     = axil_araddr[`getvec(32, C_QDMA_CSR_INDEX)] - C_QDMA0_CSR_BASE;
+  assign axil_qdma_csr_awaddr                     = axil_awaddr[`getvec(32, C_QDMA_CSR_INDEX)] - C_QDMA0_CSR_BASE;
+  assign axil_qdma_csr_araddr                     = axil_araddr[`getvec(32, C_QDMA_CSR_INDEX)] - C_QDMA0_CSR_BASE;
   assign axil_cmac0_awaddr                     = axil_awaddr[`getvec(32, C_CMAC0_INDEX)] - C_CMAC0_BASE_ADDR;
   assign axil_cmac0_araddr                     = axil_araddr[`getvec(32, C_CMAC0_INDEX)] - C_CMAC0_BASE_ADDR;
   assign axil_adap0_awaddr                     = axil_awaddr[`getvec(32, C_ADAP0_INDEX)] - C_ADAP0_BASE_ADDR;
@@ -416,8 +416,8 @@ module system_config_address_map #(
   assign s_axil_rresp                           = axil_pcie_rresp;
   assign axil_pcie_rready                       = s_axil_rready;
   
-  assign m_axil_qdma_awvalid                        = axil_awvalid[C_QDMA_CSR_INDEX];
-  assign m_axil_qdma_csr_awaddr[`getvec(32,0)]     = axil_qdma1_awaddr;
+  assign m_axil_qdma_csr_awvalid                        = axil_awvalid[C_QDMA_CSR_INDEX];
+  assign m_axil_qdma_csr_awaddr[`getvec(32,0)]     = axil_qdma_csr_awaddr;
   assign axil_awready[C_QDMA_CSR_INDEX]             = m_axil_qdma_csr_awready;
   assign m_axil_qdma_csr_wvalid                     = axil_wvalid[C_QDMA_CSR_INDEX];
   assign m_axil_qdma_csr_wdata[`getvec(32, 0)]      = axil_wdata[`getvec(32, C_QDMA_CSR_INDEX)];
@@ -426,7 +426,7 @@ module system_config_address_map #(
   assign axil_bresp[`getvec(2, C_QDMA_CSR_INDEX)]   = m_axil_qdma_csr_bresp[`getvec(2, 0)];
   assign m_axil_qdma_csr_bready                     = axil_bready[C_QDMA_CSR_INDEX];
   assign m_axil_qdma_csr_arvalid                    = axil_arvalid[C_QDMA_CSR_INDEX];
-  assign m_axil_qdma_csr_araddr[`getvec(32, 0)]     = axil_qdma1_araddr;
+  assign m_axil_qdma_csr_araddr[`getvec(32, 0)]     = axil_qdma_csr_araddr;
   assign axil_arready[C_QDMA_CSR_INDEX]             = m_axil_qdma_csr_arready;
   assign axil_rvalid[C_QDMA_CSR_INDEX]              = m_axil_qdma_csr_rvalid;
   assign axil_rdata[`getvec(32, C_QDMA_CSR_INDEX)]  = m_axil_qdma_csr_rdata[`getvec(32, 0)];

@@ -360,7 +360,7 @@ module qdma_subsystem_qdma_wrapper (
   assign axis_aclk = aclk_250mhz;
 
   // Generate 125MHz 'axil_aclk'
-  `ifdef __au55n__
+  `ifdef __au55c__
   qdma_subsystem_clk_div clk_div_inst (
     .clk_in1  (axis_aclk),
     .clk_out1 (axil_aclk),

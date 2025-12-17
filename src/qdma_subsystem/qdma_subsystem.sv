@@ -60,44 +60,44 @@ module qdma_subsystem #(
   output     [NUM_PHYS_FUNC-1:0] s_axis_c2h_tready,
 
   // QDMA DMA Engine - AXI MM interface
-  input                          m_axi_awready,
-  input                          m_axi_wready,
-  input                  [3:0]   m_axi_bid,
-  input                  [1:0]   m_axi_bresp,
-  input                          m_axi_bvalid,
-  input                          m_axi_arready,
-  input                  [3:0]   m_axi_rid,
-  input                  [511:0] m_axi_rdata,
-  input                  [1:0]   m_axi_rresp,
-  input                          m_axi_rlast,
-  input                          m_axi_rvalid,
-  output                 [3:0]   m_axi_awid,
-  output                 [63:0]  m_axi_awaddr,
-  output                 [31:0]  m_axi_awuser,
-  output                 [7:0]   m_axi_awlen,
-  output                 [2:0]   m_axi_awsize,
-  output                 [1:0]   m_axi_awburst,
-  output                 [2:0]   m_axi_awprot,
-  output                         m_axi_awvalid,
-  output                         m_axi_awlock,
-  output                 [3:0]   m_axi_awcache,
-  output                 [511:0] m_axi_wdata,
-  output                 [63:0]  m_axi_wuser,
-  output                 [63:0]  m_axi_wstrb,
-  output                         m_axi_wlast,
-  output                         m_axi_wvalid,
-  output                         m_axi_bready,
-  output                 [3:0]   m_axi_arid,
-  output                 [63:0]  m_axi_araddr,
-  output                 [31:0]  m_axi_aruser,
-  output                 [7:0]   m_axi_arlen,
-  output                 [2:0]   m_axi_arsize,
-  output                 [1:0]   m_axi_arburst,
-  output                 [2:0]   m_axi_arprot,
-  output                         m_axi_arvalid,
-  output                         m_axi_arlock,
-  output                 [3:0]   m_axi_arcache,
-  output                         m_axi_rready,
+  input                          m_axi_qdma_mm_awready,
+  input                          m_axi_qdma_mm_wready,
+  input                  [3:0]   m_axi_qdma_mm_bid,
+  input                  [1:0]   m_axi_qdma_mm_bresp,
+  input                          m_axi_qdma_mm_bvalid,
+  input                          m_axi_qdma_mm_arready,
+  input                  [3:0]   m_axi_qdma_mm_rid,
+  input                  [511:0] m_axi_qdma_mm_rdata,
+  input                  [1:0]   m_axi_qdma_mm_rresp,
+  input                          m_axi_qdma_mm_rlast,
+  input                          m_axi_qdma_mm_rvalid,
+  output                 [3:0]   m_axi_qdma_mm_awid,
+  output                 [63:0]  m_axi_qdma_mm_awaddr,
+  output                 [31:0]  m_axi_qdma_mm_awuser,
+  output                 [7:0]   m_axi_qdma_mm_awlen,
+  output                 [2:0]   m_axi_qdma_mm_awsize,
+  output                 [1:0]   m_axi_qdma_mm_awburst,
+  output                 [2:0]   m_axi_qdma_mm_awprot,
+  output                         m_axi_qdma_mm_awvalid,
+  output                         m_axi_qdma_mm_awlock,
+  output                 [3:0]   m_axi_qdma_mm_awcache,
+  output                 [511:0] m_axi_qdma_mm_wdata,
+  output                 [63:0]  m_axi_qdma_mm_wuser,
+  output                 [63:0]  m_axi_qdma_mm_wstrb,
+  output                         m_axi_qdma_mm_wlast,
+  output                         m_axi_qdma_mm_wvalid,
+  output                         m_axi_qdma_mm_bready,
+  output                 [3:0]   m_axi_qdma_mm_arid,
+  output                 [63:0]  m_axi_qdma_mm_araddr,
+  output                 [31:0]  m_axi_qdma_mm_aruser,
+  output                 [7:0]   m_axi_qdma_mm_arlen,
+  output                 [2:0]   m_axi_qdma_mm_arsize,
+  output                 [1:0]   m_axi_qdma_mm_arburst,
+  output                 [2:0]   m_axi_qdma_mm_arprot,
+  output                         m_axi_qdma_mm_arvalid,
+  output                         m_axi_qdma_mm_arlock,
+  output                 [3:0]   m_axi_qdma_mm_arcache,
+  output                         m_axi_qdma_mm_rready,
 
 
   input                   [15:0] pcie_rxp,
@@ -251,47 +251,6 @@ module qdma_subsystem #(
   wire         axis_qdma_c2h_ctrl_has_cmpt;
   wire   [5:0] axis_qdma_c2h_mty;
   wire         axis_qdma_c2h_tready;
-
-  /*
-  wire         axi_qdma_mm_awready;
-  wire         axi_qdma_mm_wready;
-  wire [3:0]   axi_qdma_mm_bid;
-  wire [1:0]   axi_qdma_mm_bresp;
-  wire         axi_qdma_mm_bvalid;
-  wire         axi_qdma_mm_arready;
-  wire [3:0]   axi_qdma_mm_rid;
-  wire [511:0] axi_qdma_mm_rdata;
-  wire [1:0]   axi_qdma_mm_rresp;
-  wire         axi_qdma_mm_rlast;
-  wire         axi_qdma_mm_rvalid;
-  wire [3:0]   axi_qdma_mm_awid;
-  wire [63:0]  axi_qdma_mm_awaddr;
-  wire [31:0]  axi_qdma_mm_awuser;
-  wire [7:0]   axi_qdma_mm_awlen;
-  wire [2:0]   axi_qdma_mm_awsize;
-  wire [1:0]   axi_qdma_mm_awburst;
-  wire [2:0]   axi_qdma_mm_awprot;
-  wire         axi_qdma_mm_awvalid;
-  wire         axi_qdma_mm_awlock;
-  wire [3:0]   axi_qdma_mm_awcache;
-  wire [511:0] axi_qdma_mm_wdata;
-  wire [63:0]  axi_qdma_mm_wuser;
-  wire [63:0]  axi_qdma_mm_wstrb;
-  wire         axi_qdma_mm_wlast;
-  wire         axi_qdma_mm_wvalid;
-  wire         axi_qdma_mm_bready;
-  wire [3:0]   axi_qdma_mm_arid;
-  wire [63:0]  axi_qdma_mm_araddr;
-  wire [31:0]  axi_qdma_mm_aruser;
-  wire [7:0]   axi_qdma_mm_arlen;
-  wire [2:0]   axi_qdma_mm_arsize;
-  wire [1:0]   axi_qdma_mm_arburst;
-  wire [2:0]   axi_qdma_mm_arprot;
-  wire         axi_qdma_mm_arvalid;
-  wire         axi_qdma_mm_arlock;
-  wire [3:0]   axi_qdma_mm_arcache;
-  wire         axi_qdma_mm_rready;
-  */
 
   wire         axis_qdma_cpl_tvalid;
   wire [511:0] axis_qdma_cpl_tdata;
@@ -483,44 +442,44 @@ module qdma_subsystem #(
     .m_axil_rresp                    (m_axil_pcie_rresp),
     .m_axil_rready                   (m_axil_pcie_rready),
 
-    .m_axi_awready                   (m_axi_awready),
-    .m_axi_wready                    (m_axi_wready),
-    .m_axi_bid                       (m_axi_bid),
-    .m_axi_bresp                     (m_axi_bresp),
-    .m_axi_bvalid                    (m_axi_bvalid),
-    .m_axi_arready                   (m_axi_arready),
-    .m_axi_rid                       (m_axi_rid),
-    .m_axi_rdata                     (m_axi_rdata),
-    .m_axi_rresp                     (m_axi_rresp),
-    .m_axi_rlast                     (m_axi_rlast),
-    .m_axi_rvalid                    (m_axi_rvalid),
-    .m_axi_awid                      (m_axi_awid),
-    .m_axi_awaddr                    (m_axi_awaddr),
-    .m_axi_awuser                    (m_axi_awuser),
-    .m_axi_awlen                     (m_axi_awlen),
-    .m_axi_awsize                    (m_axi_awsize),
-    .m_axi_awburst                   (m_axi_awburst),
-    .m_axi_awprot                    (m_axi_awprot),
-    .m_axi_awvalid                   (m_axi_awvalid),
-    .m_axi_awlock                    (m_axi_awlock),
-    .m_axi_awcache                   (m_axi_awcache),
-    .m_axi_wdata                     (m_axi_wdata),
-    .m_axi_wuser                     (m_axi_wuser),
-    .m_axi_wstrb                     (m_axi_wstrb),
-    .m_axi_wlast                     (m_axi_wlast),
-    .m_axi_wvalid                    (m_axi_wvalid),
-    .m_axi_bready                    (m_axi_bready),
-    .m_axi_arid                      (m_axi_arid),
-    .m_axi_araddr                    (m_axi_araddr),
-    .m_axi_aruser                    (m_axi_aruser),
-    .m_axi_arlen                     (m_axi_arlen),
-    .m_axi_arsize                    (m_axi_arsize),
-    .m_axi_arburst                   (m_axi_arburst),
-    .m_axi_arprot                    (m_axi_arprot),
-    .m_axi_arvalid                   (m_axi_arvalid),
-    .m_axi_arlock                    (m_axi_arlock),
-    .m_axi_arcache                   (m_axi_arcache),
-    .m_axi_rready                    (m_axi_rready),
+    .m_axi_awready                   (m_axi_qdma_mm_awready),
+    .m_axi_wready                    (m_axi_qdma_mm_wready),
+    .m_axi_bid                       (m_axi_qdma_mm_bid),
+    .m_axi_bresp                     (m_axi_qdma_mm_bresp),
+    .m_axi_bvalid                    (m_axi_qdma_mm_bvalid),
+    .m_axi_arready                   (m_axi_qdma_mm_arready),
+    .m_axi_rid                       (m_axi_qdma_mm_rid),
+    .m_axi_rdata                     (m_axi_qdma_mm_rdata),
+    .m_axi_rresp                     (m_axi_qdma_mm_rresp),
+    .m_axi_rlast                     (m_axi_qdma_mm_rlast),
+    .m_axi_rvalid                    (m_axi_qdma_mm_rvalid),
+    .m_axi_awid                      (m_axi_qdma_mm_awid),
+    .m_axi_awaddr                    (m_axi_qdma_mm_awaddr),
+    .m_axi_awuser                    (m_axi_qdma_mm_awuser),
+    .m_axi_awlen                     (m_axi_qdma_mm_awlen),
+    .m_axi_awsize                    (m_axi_qdma_mm_awsize),
+    .m_axi_awburst                   (m_axi_qdma_mm_awburst),
+    .m_axi_awprot                    (m_axi_qdma_mm_awprot),
+    .m_axi_awvalid                   (m_axi_qdma_mm_awvalid),
+    .m_axi_awlock                    (m_axi_qdma_mm_awlock),
+    .m_axi_awcache                   (m_axi_qdma_mm_awcache),
+    .m_axi_wdata                     (m_axi_qdma_mm_wdata),
+    .m_axi_wuser                     (m_axi_qdma_mm_wuser),
+    .m_axi_wstrb                     (m_axi_qdma_mm_wstrb),
+    .m_axi_wlast                     (m_axi_qdma_mm_wlast),
+    .m_axi_wvalid                    (m_axi_qdma_mm_wvalid),
+    .m_axi_bready                    (m_axi_qdma_mm_bready),
+    .m_axi_arid                      (m_axi_qdma_mm_arid),
+    .m_axi_araddr                    (m_axi_qdma_mm_araddr),
+    .m_axi_aruser                    (m_axi_qdma_mm_aruser),
+    .m_axi_arlen                     (m_axi_qdma_mm_arlen),
+    .m_axi_arsize                    (m_axi_qdma_mm_arsize),
+    .m_axi_arburst                   (m_axi_qdma_mm_arburst),
+    .m_axi_arprot                    (m_axi_qdma_mm_arprot),
+    .m_axi_arvalid                   (m_axi_qdma_mm_arvalid),
+    .m_axi_arlock                    (m_axi_qdma_mm_arlock),
+    .m_axi_arcache                   (m_axi_qdma_mm_arcache),
+    .m_axi_rready                    (m_axi_qdma_mm_rready),
 
     .m_axis_h2c_tvalid               (axis_qdma_h2c_tvalid),
     .m_axis_h2c_tdata                (axis_qdma_h2c_tdata),
@@ -1082,5 +1041,48 @@ module qdma_subsystem #(
     end
 
   endgenerate
+
+  `ifdef __simulation__
+  // Strobe signals for s_axil_csr interface monitoring
+  always @(posedge axil_aclk) begin
+    if (s_axil_csr_awvalid && s_axil_csr_awready)
+      $strobe("[%t] CSR AXIL AW: addr=0x%h", $time, s_axil_csr_awaddr);
+    if (s_axil_csr_wvalid && s_axil_csr_wready)
+      $strobe("[%t] CSR AXIL W: data=0x%h", $time, s_axil_csr_wdata);
+    if (s_axil_csr_bvalid && s_axil_csr_bready)
+      $strobe("[%t] CSR AXIL B: resp=%b", $time, s_axil_csr_bresp);
+    if (s_axil_csr_arvalid && s_axil_csr_arready)
+      $strobe("[%t] CSR AXIL AR: addr=0x%h", $time, s_axil_csr_araddr);
+    if (s_axil_csr_rvalid && s_axil_csr_rready)
+      $strobe("[%t] CSR AXIL R: data=0x%h, resp=%b", $time, s_axil_csr_rdata, s_axil_csr_rresp);
+  end
+
+  // Strobe signals for s_axil interface monitoring
+  always @(posedge axil_aclk) begin
+    if (s_axil_awvalid && s_axil_awready)
+      $strobe("[%t] QDMA S_AXIL AW: addr=0x%h", $time, s_axil_awaddr);
+    if (s_axil_wvalid && s_axil_wready)
+      $strobe("[%t] QDMA S_AXIL W: data=0x%h", $time, s_axil_wdata);
+    if (s_axil_bvalid && s_axil_bready)
+      $strobe("[%t] QDMA S_AXIL B: resp=%b", $time, s_axil_bresp);
+    if (s_axil_arvalid && s_axil_arready)
+      $strobe("[%t] QDMA S_AXIL AR: addr=0x%h", $time, s_axil_araddr);
+    if (s_axil_rvalid && s_axil_rready)
+      $strobe("[%t] QDMA S_AXIL R: data=0x%h, resp=%b", $time, s_axil_rdata, s_axil_rresp);
+  end
+  // Strobe signals for AXI-Lite interface monitoring
+  always @(posedge axil_aclk) begin
+    if (m_axil_pcie_awvalid && m_axil_pcie_awready)
+      $strobe("[%t] PCIE AXIL AW: addr=0x%h", $time, m_axil_pcie_awaddr);
+    if (m_axil_pcie_wvalid && m_axil_pcie_wready)
+      $strobe("[%t] PCIE AXIL W: data=0x%h", $time, m_axil_pcie_wdata);
+    if (m_axil_pcie_bvalid && m_axil_pcie_bready)
+      $strobe("[%t] PCIE AXIL B: resp=%b", $time, m_axil_pcie_bresp);
+    if (m_axil_pcie_arvalid && m_axil_pcie_arready)
+      $strobe("[%t] PCIE AXIL AR: addr=0x%h", $time, m_axil_pcie_araddr);
+    if (m_axil_pcie_rvalid && m_axil_pcie_rready)
+      $strobe("[%t] PCIE AXIL R: data=0x%h, resp=%b", $time, m_axil_pcie_rdata, m_axil_pcie_rresp);
+  end
+  `endif
 
 endmodule: qdma_subsystem

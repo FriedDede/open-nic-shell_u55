@@ -74,9 +74,11 @@ module qdma_subsystem_function #(
 
   input          axil_aclk,
   input          axis_aclk,
-  input          axis_master_aclk,
   input          axil_aresetn
 );
+
+  wire axis_master_aclk;
+  assign axis_master_aclk = axis_aclk;
 
   // The value of `C_PKT_FIFO_DEPTH` should be at least the latency of queue ID
   // computation.  The FIFO is not operated in packet mode.

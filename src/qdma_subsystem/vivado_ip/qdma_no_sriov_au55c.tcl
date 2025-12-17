@@ -49,6 +49,8 @@ set_property -dict [list \
   CONFIG.testname {mm_st} \
   CONFIG.tl_pf_enable_reg {1} \
   CONFIG.xlnx_ref_board {AU55C} \
+  CONFIG.csr_axilite_slave {true} \
+  CONFIG.en_bridge_slv {true} \
 ] [get_ips qdma_no_sriov]
 set_property CONFIG.tl_pf_enable_reg $num_phys_func [get_ips $qdma]
 set_property CONFIG.num_queues $num_queue [get_ips $qdma]

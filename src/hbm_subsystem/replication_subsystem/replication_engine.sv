@@ -254,7 +254,7 @@ always_comb begin
             m_axis_mem_tkeep  = net_fifo_out_tkeep;
             m_axis_mem_tlast  = net_fifo_out_tlast;
             net_fifo_rd_en = m_axis_mem_tready;
-            m_axis_mem_tdata[31:0] = DIRTY_TAG;
+            m_axis_mem_tdata[31:0] = VALID_TAG;
             if (m_axis_mem_tvalid) begin
               tag_written_next = 1'b1;
             end
@@ -274,7 +274,7 @@ always_comb begin
                   replica_mem_write.tdata = net_fifo_out_tdata;
                   replica_mem_write.tkeep = net_fifo_out_tkeep;
                   replica_mem_write.tlast = net_fifo_out_tlast;
-                  replica_mem_write.tdata[31:0] = DIRTY_TAG;
+                  replica_mem_write.tdata[31:0] = VALID_TAG;
                   rep_write_ptr_next = 1;
                   tag_written_next = 1'b1;
                 end
@@ -343,7 +343,7 @@ always_comb begin
       m_axis_mem_tlast  = net_fifo_out_tlast;
       net_fifo_rd_en = m_axis_mem_tready;
       if (!tag_written_next) begin
-        m_axis_mem_tdata[31:0] = DIRTY_TAG;
+        m_axis_mem_tdata[31:0] = VALID_TAG;
         if (m_axis_mem_tvalid && m_axis_mem_tready) begin
           tag_written_next = 1'b1;
         end
@@ -365,7 +365,7 @@ always_comb begin
         m_axis_mem_tlast  = net_fifo_out_tlast;
         net_fifo_rd_en = m_axis_mem_tready;
         if (!tag_written) begin
-          m_axis_mem_tdata[31:0] = DIRTY_TAG;
+          m_axis_mem_tdata[31:0] = VALID_TAG;
           tag_written_next = 1'b1;
         end
 

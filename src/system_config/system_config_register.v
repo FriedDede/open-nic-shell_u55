@@ -66,6 +66,22 @@ module system_config_register #(
   input         aresetn
 );
 
+`ifdef __simulation__
+  // Strobe signals for AXI-Lite interface monitoring
+  always @(posedge aclk) begin
+    if (s_axil_awvalid && s_axil_awready)
+      $strobe("[%t] REGISTERS syscfg AXIL AW: addr=0x%h", $time, s_axil_awaddr);
+    if (s_axil_wvalid && s_axil_wready)
+      $strobe("[%t] REGISTERS syscfg AXIL W: data=0x%h", $time, s_axil_wdata);
+    if (s_axil_bvalid && s_axil_bready)
+      $strobe("[%t] REGISTERS syscfg AXIL B: resp=%b", $time, s_axil_bresp);
+    if (s_axil_arvalid && s_axil_arready)
+      $strobe("[%t] REGISTERS syscfg AXIL AR: addr=0x%h", $time, s_axil_araddr);
+    if (s_axil_rvalid && s_axil_rready)
+      $strobe("[%t] REGISTERS syscfg AXIL R: data=0x%h, resp=%b", $time, s_axil_rdata, s_axil_rresp);
+  end
+`endif
+
   localparam C_ADDR_W = 12;
 
   // Register address

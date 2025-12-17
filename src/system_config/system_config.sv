@@ -317,22 +317,22 @@ module system_config #(
   system_config_address_map #(
     .NUM_CMAC_PORT (NUM_CMAC_PORT)
   ) scfg_address_map_inst (
-    .s_axil_awvalid      (s_axil_awvalid[0]),
-    .s_axil_awaddr       (s_axil_awaddr[0]),
-    .s_axil_awready      (s_axil_awready[0]),
-    .s_axil_wvalid       (s_axil_wvalid[0]),
-    .s_axil_wdata        (s_axil_wdata[0]),
-    .s_axil_wready       (s_axil_wready[0]),
-    .s_axil_bvalid       (s_axil_bvalid[0]),
-    .s_axil_bresp        (s_axil_bresp[0]),
-    .s_axil_bready       (s_axil_bready[0]),
-    .s_axil_arvalid      (s_axil_arvalid[0]),
-    .s_axil_araddr       (s_axil_araddr[0]),
-    .s_axil_arready      (s_axil_arready[0]),
-    .s_axil_rvalid       (s_axil_rvalid[0]),
-    .s_axil_rdata        (s_axil_rdata[0]),
-    .s_axil_rresp        (s_axil_rresp[0]),
-    .s_axil_rready       (s_axil_rready[0]),
+    .s_axil_awvalid              (s_axil_awvalid[0]),
+    .s_axil_awaddr         (s_axil_awaddr[31:0]),
+    .s_axil_awready              (s_axil_awready[0]),
+    .s_axil_wvalid               (s_axil_wvalid[0]),
+    .s_axil_wdata          (s_axil_wdata[31:0]),
+    .s_axil_wready               (s_axil_wready[0]),
+    .s_axil_bvalid               (s_axil_bvalid[0]),
+    .s_axil_bresp           (s_axil_bresp[1:0]),
+    .s_axil_bready               (s_axil_bready[0]),
+    .s_axil_arvalid              (s_axil_arvalid[0]),
+    .s_axil_araddr         (s_axil_araddr[31:0]),
+    .s_axil_arready              (s_axil_arready[0]),
+    .s_axil_rvalid               (s_axil_rvalid[0]),
+    .s_axil_rdata          (s_axil_rdata[31:0]),
+    .s_axil_rresp           (s_axil_rresp[1:0]),
+    .s_axil_rready               (s_axil_rready[0]),
 
     .m_axil_scfg_awvalid (axil_scfg_awvalid),
     .m_axil_scfg_awaddr  (axil_scfg_awaddr),
@@ -352,20 +352,20 @@ module system_config #(
     .m_axil_scfg_rready  (axil_scfg_rready),
 
     .m_axil_qdma_awvalid (m_axil_qdma_awvalid[0]),
-    .m_axil_qdma_awaddr  (m_axil_qdma_awaddr[0]),
+    .m_axil_qdma_awaddr  (m_axil_qdma_awaddr[31:0]),
     .m_axil_qdma_awready (m_axil_qdma_awready[0]),
     .m_axil_qdma_wvalid  (m_axil_qdma_wvalid[0]),
-    .m_axil_qdma_wdata   (m_axil_qdma_wdata[0]),
+    .m_axil_qdma_wdata   (m_axil_qdma_wdata[31:0]),
     .m_axil_qdma_wready  (m_axil_qdma_wready[0]),
     .m_axil_qdma_bvalid  (m_axil_qdma_bvalid[0]),
-    .m_axil_qdma_bresp   (m_axil_qdma_bresp[0]),
+    .m_axil_qdma_bresp   (m_axil_qdma_bresp[1:0]),
     .m_axil_qdma_bready  (m_axil_qdma_bready[0]),
     .m_axil_qdma_arvalid (m_axil_qdma_arvalid[0]),
-    .m_axil_qdma_araddr  (m_axil_qdma_araddr[0]),
+    .m_axil_qdma_araddr  (m_axil_qdma_araddr[31:0]),
     .m_axil_qdma_arready (m_axil_qdma_arready[0]),
     .m_axil_qdma_rvalid  (m_axil_qdma_rvalid[0]),
-    .m_axil_qdma_rdata   (m_axil_qdma_rdata[0]),
-    .m_axil_qdma_rresp   (m_axil_qdma_rresp[0]),
+    .m_axil_qdma_rdata   (m_axil_qdma_rdata[31:0]),
+    .m_axil_qdma_rresp   (m_axil_qdma_rresp[1:0]),
     .m_axil_qdma_rready  (m_axil_qdma_rready[0]),
 
     .m_axil_qdma_csr_awvalid    ( m_axil_qdma_csr_awvalid    ),
@@ -578,7 +578,7 @@ module system_config #(
 
   // Generate 50MHz 'cms_clk'
 clk_wiz_50Mhz clk_wiz_cms_inst (
-    .clk_in1  (aclk),
+    .clk_in1  (aclk[0]),
     .resetn   (aresetn),
     .clk_out1 (clk_50mhz_wiz_out),
     .locked   (cms_locked)
@@ -788,6 +788,48 @@ cms_subsystem_wrapper
     .satellite_uart_0_rxd    (satellite_uart_0_rxd),
     .satellite_uart_0_txd    (satellite_uart_0_txd)
   );
+`endif
+
+`ifdef __simulation__
+// Strobe signals for m_axil_qdma_csr interface monitoring
+always @(posedge aclk[0]) begin
+  if (m_axil_qdma_csr_awvalid && m_axil_qdma_csr_awready)
+    $strobe("[%t] SYSCFG QDMA_CSR AXIL AW: addr=0x%h", $time, m_axil_qdma_csr_awaddr);
+  if (m_axil_qdma_csr_wvalid && m_axil_qdma_csr_wready)
+    $strobe("[%t] SYSCFG QDMA_CSR AXIL W: data=0x%h", $time, m_axil_qdma_csr_wdata);
+  if (m_axil_qdma_csr_bvalid && m_axil_qdma_csr_bready)
+    $strobe("[%t] SYSCFG QDMA_CSR AXIL B: resp=%b", $time, m_axil_qdma_csr_bresp);
+  if (m_axil_qdma_csr_arvalid && m_axil_qdma_csr_arready)
+    $strobe("[%t] SYSCFG QDMA_CSR AXIL AR: addr=0x%h", $time, m_axil_qdma_csr_araddr);
+  if (m_axil_qdma_csr_rvalid && m_axil_qdma_csr_rready)
+    $strobe("[%t] SYSCFG QDMA_CSR AXIL R: data=0x%h, resp=%b", $time, m_axil_qdma_csr_rdata, m_axil_qdma_csr_rresp);
+end
+// Strobe signals for s_axil interface monitoring
+always @(posedge aclk[0]) begin
+  if (s_axil_awvalid[0] && s_axil_awready[0])
+    $strobe("[%t] SYSCFG S_AXIL AW: addr=0x%h", $time, s_axil_awaddr[31:0]);
+  if (s_axil_wvalid[0] && s_axil_wready[0])
+    $strobe("[%t] SYSCFG S_AXIL W: data=0x%h", $time, s_axil_wdata[31:0]);
+  if (s_axil_bvalid[0] && s_axil_bready[0])
+    $strobe("[%t] SYSCFG S_AXIL B: resp=%b", $time, s_axil_bresp[1:0]);
+  if (s_axil_arvalid[0] && s_axil_arready[0])
+    $strobe("[%t] SYSCFG S_AXIL AR: addr=0x%h", $time, s_axil_araddr[31:0]);
+  if (s_axil_rvalid[0] && s_axil_rready[0])
+    $strobe("[%t] SYSCFG S_AXIL R: data=0x%h, resp=%b", $time, s_axil_rdata[31:0], s_axil_rresp[1:0]);
+end
+// Strobe signals for m_axil_qdma interface monitoring
+always @(posedge aclk[0]) begin
+  if (m_axil_qdma_awvalid[0] && m_axil_qdma_awready[0])
+    $strobe("[%t] SYSCFG QDMA AXIL AW: addr=0x%h", $time, m_axil_qdma_awaddr[31:0]);
+  if (m_axil_qdma_wvalid[0] && m_axil_qdma_wready[0])
+    $strobe("[%t] SYSCFG QDMA AXIL W: data=0x%h", $time, m_axil_qdma_wdata[31:0]);
+  if (m_axil_qdma_bvalid[0] && m_axil_qdma_bready[0])
+    $strobe("[%t] SYSCFG QDMA AXIL B: resp=%b", $time, m_axil_qdma_bresp[1:0]);
+  if (m_axil_qdma_arvalid[0] && m_axil_qdma_arready[0])
+    $strobe("[%t] SYSCFG QDMA AXIL AR: addr=0x%h", $time, m_axil_qdma_araddr[31:0]);
+  if (m_axil_qdma_rvalid[0] && m_axil_qdma_rready[0])
+    $strobe("[%t] SYSCFG QDMA AXIL R: data=0x%h, resp=%b", $time, m_axil_qdma_rdata[31:0], m_axil_qdma_rresp[1:0]);
+end
 `endif
 
 endmodule: system_config
