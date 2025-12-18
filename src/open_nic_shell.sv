@@ -518,9 +518,12 @@ module open_nic_shell #(
   // Unused reset pairs must have their "reset_done" tied to 1
 
   // First 4-bit for QDMA subsystem
+  logic qdma_csr_prog_done;
   assign qdma_rstn                    = shell_rstn[NUM_QDMA-1:0];
   assign shell_rst_done[NUM_QDMA-1:0] = qdma_rst_done;
   assign shell_rst_done[3:NUM_QDMA]   = {4-NUM_QDMA{1'b1}};
+  assign shell_rst_done[2]   = qdma_csr_prog_done;
+  assign shell_rst_done[3]   = 1'b1;
 
   // For each CMAC port, use the subsequent 4-bit: bit 0 for CMAC subsystem and
   // bit 1 for the corresponding adapter
@@ -611,7 +614,7 @@ module open_nic_shell #(
 
     .m_axil_qdma_csr_awvalid  (  axil_qdma_csr_awvalid     )  ,
     .m_axil_qdma_csr_awaddr  (   axil_qdma_csr_awaddr      )  ,
-    .m_axil_qdma_csr_awready  (  axil_qdma_csr_awready     )  ,
+    .m_axil_qdma_csr_awready  (  axil_qdma_csr_awready  && qdma_csr_prog_done   )  ,
     .m_axil_qdma_csr_wvalid  (   axil_qdma_csr_wvalid      )  ,
     .m_axil_qdma_csr_wdata  (    axil_qdma_csr_wdata     )  ,
     .m_axil_qdma_csr_wready  (   axil_qdma_csr_wready      )  ,
