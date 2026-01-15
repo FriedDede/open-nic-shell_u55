@@ -100,7 +100,6 @@ module replication_subsystem #(
   input  logic                  s_axil_awvalid,
   output logic                  s_axil_awready,
   input  logic           [31:0] s_axil_wdata,
-  input  logic            [7:0] s_axil_wstrb,
   input  logic                  s_axil_wvalid,
   output logic                  s_axil_wready,
   output logic            [1:0] s_axil_bresp,

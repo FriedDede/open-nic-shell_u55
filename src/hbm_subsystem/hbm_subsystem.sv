@@ -3,21 +3,25 @@
 import metadata_pkg::*;
 
 module kvs_subsystem #(
-  parameter int                     DATA_WIDTH     = 512,
-  parameter int                     MAX_NODES      = 32,
-  parameter int                     BUCKET_SIZE    = 1024,
-  parameter logic            [31:0] NODE_IP        = '0,
-  parameter logic            [47:0] NODE_MAC       = '0,
-  parameter int                     TIMER_WIDTH    = 30,  // ~4.2 s
-  parameter int                     USE_CONTROLLER = 1,
-  parameter int                     SEED           = 32'hdeadbeef,
-  parameter logic [TIMER_WIDTH-1:0] TAP_MASK       = 30'h60000000
+  parameter int                     DATA_WIDTH      = 512,
+  parameter int                     MAX_NODES       = 32,
+  parameter int                     BUCKET_SIZE     = 1024,
+  parameter logic            [31:0] NODE_IP         = '0,
+  parameter logic            [47:0] NODE_MAC        = '0,
+  parameter int                     TIMER_WIDTH     = 30,  // ~4.2 s
+  parameter int                     USE_CONTROLLER  = 1,
+  parameter int                     SEED            = 32'hdeadbeef,
+  // default mapping [mem 0x0000000400000000-0x00000007ffffffff]
+  parameter logic [63:0]            BASE_HOST_MEM   = 64'h0000000400000000, // starts at 16GB by default
+  parameter logic [63:0]            MASK_HOST_MEM   = 64'h00000003ffffffff, // 16GB by defaults
+  parameter logic [TIMER_WIDTH-1:0] TAP_MASK        = 30'h60000000
 ) (
   input          axis_aclk,
   input          axil_aclk,
   input          axi_rstn,
   input          hbm_ref_clk,
 
+  // QDMA DMA Engine - AXI MM interface - slave
   input   [63:0] s_axi_araddr,
   input    [1:0] s_axi_arburst,
   input    [3:0] s_axi_arcache,
@@ -59,7 +63,7 @@ module kvs_subsystem #(
   input   [63:0] s_axi_wuser,
   input          s_axi_wvalid,
 
-  // QDMA DMA Engine - AXI MM interface
+  // QDMA DMA Engine - AXI BRIDGE MM interface - master
   input                          m_axi_sys_mem_awready,
   input                          m_axi_sys_mem_wready,
   input                  [3:0]   m_axi_sys_mem_bid,
@@ -103,7 +107,6 @@ module kvs_subsystem #(
   input          s_axil_awvalid,
   output         s_axil_awready,
   input   [31:0] s_axil_wdata,
-  input    [7:0] s_axil_wstrb,
   input          s_axil_wvalid,
   output         s_axil_wready,
   output   [1:0] s_axil_bresp,
@@ -227,6 +230,10 @@ localparam logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_HASHES][KEY_WIDTH-1:0] = '{{
   24'hAD5B10, 24'hBE6C20, 24'hCF7D30, 24'hD08E40,
   24'hE19F50, 24'hF2B060, 24'h03C170, 24'h14D280
 }};
+
+
+logic                 [63:0]  m_axi_sys_mem_awaddr_internal;
+logic                 [63:0]  m_axi_sys_mem_araddr_internal;
 
 logic  [33:0] axi_araddr   [NUM_HASHES];
 logic   [1:0] axi_arburst  [NUM_HASHES];
@@ -569,7 +576,7 @@ packet_arbiter packet_arbiter_inst (
   .aresetn                 (rstn)
 );
 
-hbm_bd_wrapper hbm_inst (
+hbm_bd_host_wrapper hbm_inst (
   .s_axi_hbm_araddr                (s_axi_araddr),
   .s_axi_hbm_arburst               (s_axi_arburst),
   .s_axi_hbm_arcache               (s_axi_arcache),
@@ -623,7 +630,7 @@ hbm_bd_wrapper hbm_inst (
   .m_axi_sys_mem_rlast      (     m_axi_sys_mem_rlast          ),
   .m_axi_sys_mem_rvalid     (     m_axi_sys_mem_rvalid          ),
   //.m_axi_sys_mem_awid     (     m_axi_sys_mem_awid          ),
-  .m_axi_sys_mem_awaddr     (     m_axi_sys_mem_awaddr          ),
+  .m_axi_sys_mem_awaddr     (     m_axi_sys_mem_awaddr_internal          ),
   .m_axi_sys_mem_awuser     (     m_axi_sys_mem_awuser          ),
   .m_axi_sys_mem_awlen      (     m_axi_sys_mem_awlen          ),
   .m_axi_sys_mem_awsize     (     m_axi_sys_mem_awsize          ),
@@ -639,7 +646,7 @@ hbm_bd_wrapper hbm_inst (
   .m_axi_sys_mem_wvalid     (     m_axi_sys_mem_wvalid          ),
   .m_axi_sys_mem_bready     (     m_axi_sys_mem_bready          ),
   //.m_axi_sys_mem_arid     (     m_axi_sys_mem_arid          ),
-  .m_axi_sys_mem_araddr     (     m_axi_sys_mem_araddr          ),
+  .m_axi_sys_mem_araddr     (     m_axi_sys_mem_araddr_internal          ),
   .m_axi_sys_mem_aruser     (     m_axi_sys_mem_aruser          ),
   .m_axi_sys_mem_arlen      (     m_axi_sys_mem_arlen          ),
   .m_axi_sys_mem_arsize     (     m_axi_sys_mem_arsize          ),
@@ -808,5 +815,10 @@ hbm_bd_wrapper hbm_inst (
   .axi_resetn                      (axi_rstn),
   .hbm_ref_clk                     (hbm_ref_clk)
 );
+
+// Host memory mapping
+// confines host memory region, avoiding to spill into not reserved ram, wraps around a the end
+assign m_axi_sys_mem_araddr = (m_axi_sys_mem_araddr_internal & MASK_HOST_MEM) | BASE_HOST_MEM;
+assign m_axi_sys_mem_awaddr = (m_axi_sys_mem_awaddr_internal & MASK_HOST_MEM) | BASE_HOST_MEM;
 
 endmodule

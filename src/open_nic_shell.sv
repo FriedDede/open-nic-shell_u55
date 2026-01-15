@@ -938,7 +938,11 @@ module open_nic_shell #(
   kvs_subsystem #(
     .BUCKET_SIZE                      (BUCKET_SIZE),
     .NODE_IP                          (NODE_IP),
-    .NODE_MAC                         (NODE_MAC)
+    .NODE_MAC                         (NODE_MAC),
+    // default mapping [mem 0x0000000400000000-0x00000007ffffffff]
+    // reserved 16GB from 16GB to 32GB
+    .BASE_HOST_MEM (64'h0000000400000000),
+    .MASK_HOST_MEM (64'h00000003ffffffff)
   ) kvs_subsystem_inst (
     .s_axil_awvalid                   (axil_box0_awvalid),
     .s_axil_awaddr                    (axil_box0_awaddr),

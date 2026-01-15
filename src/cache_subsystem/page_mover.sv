@@ -1,8 +1,10 @@
 `timescale 1ns / 1ps
 
-module memory_mover #(
-    parameter ADDR_WIDTH = 40,
-    parameter DATA_WIDTH = 512
+module page_mover #(
+    parameter ADDR_WIDTH    = 40,
+    parameter DATA_WIDTH    = 512,
+    parameter MAX_BURST_LEN = 256,
+    parameter PAGE_SIZE     = 2*1024*1024
 )(
     input  logic                    aclk,
     input  logic                    aresetn,
@@ -11,49 +13,50 @@ module memory_mover #(
     // Control Interface (from Cache Controller)
     // ---------------------------------------------------------
     input  logic                    i_start,      // Trigger copy
-    input  logic [ADDR_WIDTH-1:0]   i_page_addr,  // 2MB aligned address
+    input  logic [ADDR_WIDTH-1:0]   i_src_addr,  // 2MB aligned address
+    input  logic [ADDR_WIDTH-1:0]   i_dst_addr,  // 2MB aligned address
     output logic                    o_done,       // Copy complete
     output logic                    o_idle,       // Module ready
 
     // ---------------------------------------------------------
     // AXI4 Master Read (Main Memory - Source)
     // ---------------------------------------------------------
-    output logic [ADDR_WIDTH-1:0]   m_mem_araddr,
-    output logic [7:0]              m_mem_arlen,   // Fixed to 255 (256 beats)
-    output logic [2:0]              m_mem_arsize,  // Fixed to 6 (64 bytes)
-    output logic [1:0]              m_mem_arburst, // INCR type
-    output logic                    m_mem_arvalid,
-    input  logic                    m_mem_arready,
+    output logic [ADDR_WIDTH-1:0]   m_src_araddr,
+    output logic [7:0]              m_src_arlen,   // Fixed to 255 (256 beats)
+    output logic [2:0]              m_src_arsize,  // Fixed to 6 (64 bytes)
+    output logic [1:0]              m_src_arburst, // INCR type
+    output logic                    m_src_arvalid,
+    input  logic                    m_src_arready,
 
-    input  logic [DATA_WIDTH-1:0]   m_mem_rdata,
-    input  logic                    m_mem_rvalid,
-    output logic                    m_mem_rready,
-    input  logic                    m_mem_rlast,
+    input  logic [DATA_WIDTH-1:0]   m_src_rdata,
+    input  logic                    m_src_rvalid,
+    output logic                    m_src_rready,
+    input  logic                    m_src_rlast,
 
     // ---------------------------------------------------------
     // AXI4 Master Write (Cache Memory - Destination)
     // ---------------------------------------------------------
-    output logic [ADDR_WIDTH-1:0]   m_cache_awaddr,
-    output logic [7:0]              m_cache_awlen,
-    output logic [2:0]              m_cache_awsize,
-    output logic [1:0]              m_cache_awburst,
-    output logic                    m_cache_awvalid,
-    input  logic                    m_cache_awready,
+    output logic [ADDR_WIDTH-1:0]   m_dst_awaddr,
+    output logic [7:0]              m_dst_awlen,
+    output logic [2:0]              m_dst_awsize,
+    output logic [1:0]              m_dst_awburst,
+    output logic                    m_dsr_awvalid,
+    input  logic                    m_dst_awready,
 
-    output logic [DATA_WIDTH-1:0]   m_cache_wdata,
-    output logic                    m_cache_wstrb, // All 1s (Write full width)
-    output logic                    m_cache_wlast,
-    output logic                    m_cache_wvalid,
-    input  logic                    m_cache_wready,
+    output logic [DATA_WIDTH-1:0]   m_dst_wdata,
+    output logic                    m_dst_wstrb, // All 1s (Write full width)
+    output logic                    m_dst_wlast,
+    output logic                    m_dst_wvalid,
+    input  logic                    m_dst_wready,
 
-    input  logic [1:0]              m_cache_bresp,
-    input  logic                    m_cache_bvalid,
-    output logic                    m_cache_bready
+    input  logic [1:0]              m_dst_bresp,
+    input  logic                    m_dst_bvalid,
+    output logic                    m_dst_bready
 );
 
     // Constants derived from 2MB page / 512-bit width
-    localparam TOTAL_BEATS       = 32768; // 2MB / 64 Bytes
-    localparam BURST_LEN         = 256;   // Max AXI burst
+    localparam TOTAL_BEATS       = PAGE_SIZE / (DATA_WIDTH / 8); // 2MB / 64 Bytes
+    localparam BURST_LEN         = MAX_BURST_LEN;   // Max AXI burst
     localparam TOTAL_BURSTS      = TOTAL_BEATS / BURST_LEN; // 128
     localparam BYTES_PER_BURST   = BURST_LEN * (DATA_WIDTH/8); // 16KB
 
@@ -70,8 +73,8 @@ module memory_mover #(
     
     assign fifo_full  = (fifo_count == 16);
     assign fifo_empty = (fifo_count == 0);
-    assign push       = m_mem_rvalid && m_mem_rready;
-    assign pop        = m_cache_wvalid && m_cache_wready;
+    assign push       = m_src_rvalid && m_src_rready;
+    assign pop        = m_dst_wvalid && m_dst_wready;
 
     always_ff @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
@@ -80,7 +83,7 @@ module memory_mover #(
             fifo_count  <= 0;
         end else begin
             if (push) begin
-                fifo_data[fifo_wr_ptr] <= m_mem_rdata;
+                fifo_data[fifo_wr_ptr] <= m_src_rdata;
                 fifo_wr_ptr <= fifo_wr_ptr + 1;
             end
             if (pop) begin
@@ -109,35 +112,36 @@ module memory_mover #(
     // Counters
     logic [7:0]  burst_cnt;      // Counts up to 128 bursts
     logic [8:0]  beat_cnt;       // Counts up to 256 beats within a burst
-    logic [ADDR_WIDTH-1:0] current_addr;
+    logic [ADDR_WIDTH-1:0] current_src_addr;
+    logic [ADDR_WIDTH-1:0] current_dst_addr;
 
     // ---------------------------------------------------------
     // AXI Assignments
     // ---------------------------------------------------------
     // Constant / Passthrough signals
-    assign m_mem_arlen     = BURST_LEN - 1; // 255 (AXI is Len-1)
-    assign m_mem_arsize    = 3'b110;        // 64 Bytes (512 bits)
-    assign m_mem_arburst   = 2'b01;         // INCR
-    assign m_cache_awlen   = BURST_LEN - 1;
-    assign m_cache_awsize  = 3'b110;
-    assign m_cache_awburst = 2'b01;
-    assign m_cache_wstrb   = 1'b1;          // Simplified: assume full width valid
+    assign m_src_arlen     = BURST_LEN - 1; // 255 (AXI is Len-1)
+    assign m_src_arsize    = 3'b110;        // 64 Bytes (512 bits)
+    assign m_src_arburst   = 2'b01;         // INCR
+    assign m_dst_awlen   = BURST_LEN - 1;
+    assign m_dst_awsize  = 3'b110;
+    assign m_dst_awburst = 2'b01;
+    assign m_dst_wstrb   = 1'b1;          // Simplified: assume full width valid
 
     // Address Outputs
-    assign m_mem_araddr    = current_addr;
-    assign m_cache_awaddr  = current_addr; //FIX
+    assign m_src_araddr    = current_src_addr;
+    assign m_dst_awaddr    = current_dst_addr;
 
     // Read Path Control (Source)
     // Read only when FIFO has space and we are in active transfer
-    assign m_mem_rready    = ~fifo_full; 
+    assign m_src_rready    = ~fifo_full; 
     
     // Write Path Control (Dest)
     // Write only when FIFO has data
-    assign m_cache_wdata   = fifo_data[fifo_rd_ptr];
-    assign m_cache_wvalid  = ~fifo_empty && (state == DATA_PHASE);
+    assign m_dst_wdata   = fifo_data[fifo_rd_ptr];
+    assign m_dst_wvalid  = ~fifo_empty && (state == DATA_PHASE);
     
     // Generate WLAST on the 256th beat
-    assign m_cache_wlast   = (beat_cnt == BURST_LEN - 1);
+    assign m_dst_wlast   = (beat_cnt == BURST_LEN - 1);
 
 
     // ---------------------------------------------------------
@@ -145,53 +149,55 @@ module memory_mover #(
     // ---------------------------------------------------------
     always_ff @(posedge aclk or negedge aresetn) begin
         if (!aresetn) begin
-            state           <= IDLE;
-            burst_cnt       <= 0;
-            beat_cnt        <= 0;
-            current_addr    <= 0;
-            m_mem_arvalid   <= 0;
-            m_cache_awvalid <= 0;
-            m_cache_bready  <= 0;
-            o_done          <= 0;
-            o_idle          <= 1;
+            state               <= IDLE;
+            burst_cnt           <= 0;
+            beat_cnt            <= 0;
+            current_src_addr    <= 0;
+            current_dst_addr    <= 0;
+            m_src_arvalid       <= 0;
+            m_dsr_awvalid       <= 0;
+            m_dst_bready        <= 0;
+            o_done              <= 0;
+            o_idle              <= 1;
         end else begin
             case (state)
                 IDLE: begin
                     o_done <= 0;
                     o_idle <= 1;
                     if (i_start) begin
-                        current_addr <= i_page_addr;
-                        burst_cnt    <= 0;
-                        o_idle       <= 0;
-                        state        <= ADDR_PHASE;
+                        current_src_addr    <= i_src_addr;
+                        current_dst_addr    <= i_dst_addr;
+                        burst_cnt           <= 0;
+                        o_idle              <= 0;
+                        state               <= ADDR_PHASE;
                     end
                 end
 
                 ADDR_PHASE: begin
                     // Issue Read and Write Addresses simultaneously
                     // Simple logic: Assert both until accepted
-                    if (!m_mem_arvalid && !m_cache_awvalid) begin
-                        m_mem_arvalid   <= 1;
-                        m_cache_awvalid <= 1;
+                    if (!m_src_arvalid && !m_dsr_awvalid) begin
+                        m_src_arvalid   <= 1;
+                        m_dsr_awvalid   <= 1;
                     end
                     
-                    if (m_mem_arready)   m_mem_arvalid   <= 0;
-                    if (m_cache_awready) m_cache_awvalid <= 0;
+                    if (m_src_arready)   m_src_arvalid   <= 0;
+                    if (m_dst_awready)   m_dsr_awvalid <= 0;
 
                     // Move to data phase once both addresses accepted
-                    if ((m_mem_arready || !m_mem_arvalid) && 
-                        (m_cache_awready || !m_cache_awvalid)) begin
-                        beat_cnt <= 0;
-                        state    <= DATA_PHASE;
+                    if ((m_src_arready || !m_src_arvalid) && 
+                        (m_dst_awready || !m_dsr_awvalid)) begin
+                        beat_cnt        <= 0;
+                        state           <= DATA_PHASE;
                     end
                 end
 
                 DATA_PHASE: begin
                     // Count beats sent to Write Master
-                    if (m_cache_wvalid && m_cache_wready) begin
+                    if (m_dst_wvalid && m_dst_wready) begin
                         if (beat_cnt == BURST_LEN - 1) begin
                             state <= WAIT_BRESP;
-                            m_cache_bready <= 1; // Ready to accept write response
+                            m_dst_bready <= 1; // Ready to accept write response
                         end else begin
                             beat_cnt <= beat_cnt + 1;
                         end
@@ -200,8 +206,8 @@ module memory_mover #(
 
                 WAIT_BRESP: begin
                     // Wait for Write Confirmation (BVALID)
-                    if (m_cache_bvalid) begin
-                        m_cache_bready <= 0; // Deassert ready
+                    if (m_dst_bvalid) begin
+                        m_dst_bready <= 0; // Deassert ready
                         
                         // Check if we need more bursts
                         if (burst_cnt == TOTAL_BURSTS - 1) begin
@@ -209,7 +215,8 @@ module memory_mover #(
                         end else begin
                             // Prepare for next burst
                             burst_cnt    <= burst_cnt + 1;
-                            current_addr <= current_addr + BYTES_PER_BURST;
+                            current_src_addr <= current_src_addr + BYTES_PER_BURST;
+                            current_dst_addr <= current_dst_addr + BYTES_PER_BURST;
                             state        <= ADDR_PHASE;
                         end
                     end
