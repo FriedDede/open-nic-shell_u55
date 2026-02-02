@@ -2,7 +2,7 @@
 
 module cache_filter #(
     parameter ADDR_WIDTH = 40,
-    parameter DATA_WIDTH = 64, // Standard AXI width
+    parameter DATA_WIDTH = 512, // Standard AXI width
     parameter ID_WIDTH   = 4,
     parameter OFFSET_BITS = 21,   // 2 MB cache line
     parameter INDEX_BITS  = 13   // 16GB HBM
@@ -157,8 +157,8 @@ module cache_filter #(
     } tag_ram_state_t;
 
     // tag ram reset fsm
-    tag_ram_state_t tag_ram_state, tag_ram_state_next;
-    logic [INDEX_BITS-1:0] tag_ram_reset_i, tag_ram_reset_i_next;
+    tag_ram_state_t tag_ram_state;
+    logic [INDEX_BITS-1:0] tag_ram_reset_i;
 
     state_t r_state, r_next_state;
     state_t w_state, w_next_state;
@@ -280,7 +280,7 @@ module cache_filter #(
         read_is_hit = (read_current_line.valid && (read_current_line.tag == read_req_tag));
     end
 
-    // Next State Logic
+    // read fsm
     always_comb begin : read_cache_fsm
         r_next_state = r_state;
         s_axi_arready = 0;
@@ -389,12 +389,12 @@ module cache_filter #(
             write_current_line <= tag_ram[s_axi_awaddr[OFFSET_BITS +: INDEX_BITS]];
     end
 
-    // Hit Detection read
+    // Hit Detection write
     always_comb begin : w_tag_is_hit
         write_is_hit = (write_current_line.valid && (write_current_line.tag == write_req_tag));
     end
 
-    // Next State Logic
+    // write fsm
     always_comb begin : write_cache_fsm
         w_next_state = w_state;
         s_axi_awready = 0;
@@ -405,7 +405,8 @@ module cache_filter #(
         case (w_state)
             IDLE: begin
                 if (r_state == IDLE && tag_ram_state == READY) begin
-                    s_axi_awready = 1; // Ready to accept new address
+                    // Ready to accept new aw address
+                    s_axi_awready = 1; 
                     if (s_axi_awvalid) begin
                         w_next_state = CHECK_TAG;
                     end else begin

@@ -571,17 +571,39 @@ module memory_controller #(
 
         //CMD VALID state
         C_VALID: begin
-            if(metadata_tvalid_buff) //**SLAVE-SIDE.
+            metadata_tready_buff = 1'b1;
+            if(metadata_tvalid_buff) begin //**SLAVE-SIDE.
+                
+                cmd_address = hash(metadata_tdata_buff.key, HASH_MATRIX);
+                case (metadata_tdata_buff.opcode)
+                    8'h00: begin
+                            mm2s_wr_meta_tvalid = 1'b1;
+                            mm2s_wr_meta_tdata = metadata_tdata_buff;
+                            mm2s_cmd_tvalid = 1'b1;
+                            mm2s_cmd_tdata = {8'h00, 6'b0,cmd_address,10'b0 ,1'b0,1'b1,6'b000000,1'b1,BTT};                    
+                    end 
+                    8'h01: begin
+                            s2mm_wr_meta_tvalid = 1'b1;
+                            s2mm_wr_meta_tdata = metadata_tdata_buff; 
+                            s2mm_cmd_tvalid = 1'b1;    
+                            s2mm_cmd_tdata = {8'h00, 6'b0,cmd_address,10'b0 ,1'b0,1'b1,6'b000000,1'b1,BTT};  
+                            command_sent = 1'b1;
+                            s_ack_tdata_buff = '0;
+                            s_ack_tkeep_buff = '0;
+                            s_ack_tvalid_buff = 1'b1;
+                            s_ack_tlast_buff = 1'b1;
+                    end
+                    default:;
+                endcase    
                 cmd_next = C_READY;
-            else
+            end else
                 cmd_next = C_VALID;
         end
+        
 
         //CMD READY state
         C_READY: begin
-            metadata_tready_buff = 1'b1;
-            cmd_address = hash(metadata_tdata_buff.key, HASH_MATRIX);
-
+            
             case (metadata_tdata_buff.opcode)
                 8'h00: begin
                     if(mm2s_cmd_tready) begin  //**MASTER-SIDE.
@@ -666,9 +688,14 @@ module memory_controller #(
 
         //AXI VALID state
         S2MM_VALID: begin
-            if(s_tvalid_buff && stream_enable) //**SLAVE-SIDE.
+            if(s_tvalid_buff && stream_enable) begin//**SLAVE-SIDE.
+                s_tready_buff = 1'b1;
+                m_dm_axis_tvalid = 1'b1;
+                m_dm_axis_tdata = s_tlast_buff ? {4'hF, s_tdata_buff[507:0]} : s_tdata_buff;
+                m_dm_axis_tkeep = s_tlast_buff ? {4'hF, s_tkeep_buff[59:0]}   : s_tkeep_buff;
+                m_dm_axis_tlast = s_tlast_buff;
                 s2mm_next = S2MM_READY;
-            else
+            end else
                 s2mm_next = S2MM_VALID;
         end
 
@@ -683,7 +710,8 @@ module memory_controller #(
                 if(s_tlast_buff) begin
                     s2mm_next = S2MM_VALID;
                     stream_sent = 1'b1;
-                end
+                end else
+                    s2mm_next = S2MM_READY;
             end
             else
                 s2mm_next = S2MM_READY;
@@ -691,87 +719,6 @@ module memory_controller #(
         default:;
         endcase
     end
-
-    //************************************************
-    //             AXI-Stream FSM [Read]
-    //************************************************
-/*
-    // mm2s axi
-    logic [DATA_WIDTH-1:0]  mm2s_axis_tdata;
-    logic [TKEEP_WIDTH-1:0] mm2s_axis_tkeep;
-    logic                   mm2s_axis_tlast;
-    logic                   mm2s_axis_tvalid;
-
-
-    // MM2S FSM states
-    typedef enum {MM2S_IDLE,MM2S_START,MM2S_VALID,MM2S_READY} state_f;
-    
-    state_f state_reg, state_next; 
-
-    always_ff@(posedge aclk, negedge aresetn) begin
-        if(!aresetn) // Boot up the FSM.
-            state_reg <= MM2S_IDLE;
-        else 
-            state_reg <= state_next; 
-    end
-
-    // Axi Stream FSM
-    always_comb begin
-
-        state_next = state_reg;
-
-        m_tready_buff = 1'b0;
-
-        mm2s_axis_tvalid = 1'b0;
-        mm2s_axis_tdata = '0;
-        mm2s_axis_tkeep = '0;
-        mm2s_axis_tlast = '0;
-
-        case(state_reg)
-
-        //AXI IDLE state
-        MM2S_IDLE: begin 
-            if(abp_complete0)
-                state_next = MM2S_START;
-            else
-                state_next = MM2S_IDLE;
-        end
-
-        //AXI START state
-        MM2S_START: begin
-            state_next = MM2S_VALID;
-        end
-
-        //AXI VALID state
-        MM2S_VALID: begin
-            if(m_tvalid_buff) //**SLAVE-SIDE.
-                state_next = MM2S_READY;
-            else
-                state_next = MM2S_VALID;
-        end
-
-        //AXI READY state
-        MM2S_READY: begin 
-            if(m_tvalid_buff && m_axis_tready) begin
-                m_tready_buff = 1'b1;
-
-                mm2s_axis_tvalid = 1'b1;
-                mm2s_axis_tdata = m_tdata_buff;
-                mm2s_axis_tkeep = m_tkeep_buff;
-                mm2s_axis_tlast = m_tlast_buff;
-
-                if(m_tlast_buff) begin
-                    state_next = MM2S_VALID;
-                end
-            end    
-            else
-                state_next = MM2S_READY;
-        end
-
-        endcase
-    end
-*/
-
 
     //************************************************
     //         Write-ack/Read Arbitrer FSM
@@ -820,73 +767,74 @@ module memory_controller #(
 
         //Arbitrer TYPE state
         RET_TYPE: begin
-        if (m_ack_tvalid_buff && s2mm_rd_meta_tvalid && m_bvalid_buff) 
+        if (m_ack_tvalid_buff && s2mm_rd_meta_tvalid && m_bvalid_buff) begin
+            m_bready_buff = 1'b1;
+            m_axis_tvalid = 1'b1;
+            m_ack_tready_buff = 1'b1;
+            m_axis_tdata = m_ack_tdata_buff;
+            m_axis_tkeep = m_ack_tkeep_buff;
+            m_axis_tlast = m_ack_tlast_buff;
+            s2mm_rd_meta_tready = 1'b1;
+            metadata_mem_out_valid = 1'b1;
+            metadata_mem_out = s2mm_rd_meta_tdata;
             sel_n = RET_ACK;
-        else if (m_tvalid_buff && mm2s_rd_meta_tvalid) 
+        end
+        else if (m_tvalid_buff && mm2s_rd_meta_tvalid) begin
+
+            m_axis_tvalid = 1'b1;
+            m_tready_buff = 1'b1;
+            m_axis_tdata  = m_tlast_buff ? {4'h0, m_tdata_buff[507:0]} : m_tdata_buff;
+            m_axis_tkeep  = m_tlast_buff ? {4'h0, m_tkeep_buff[59:0]}  : m_tkeep_buff;
+            m_axis_tlast  = m_tlast_buff;
+            if (!sent_first_read) begin
+                mm2s_rd_meta_tready = 1'b1;
+                metadata_mem_out_valid = 1'b1;
+                metadata_mem_out = mm2s_rd_meta_tdata;
+            end
+
             sel_n = RET_READ;
+
+        end
         else
             sel_n = RET_TYPE;
         end
-
-        // RET_ACK: begin
-        //     if (s2mm_rd_meta_tvalid && m_bvalid_buff) begin
-        //         m_axis_tvalid = 1'b1;
-        //         m_axis_tdata = '0;
-        //         m_axis_tkeep = '0;
-        //         m_axis_tlast = 1'b1;
-
-        //         metadata_mem_out_valid = 1'b1;
-        //         metadata_mem_out = s2mm_rd_meta_tdata;
-
-        //         if (m_axis_tready) begin
-        //             m_bready_buff = 1'b1;
-        //             s2mm_rd_meta_tready = 1'b1;
-        //             sel_n = RET_TYPE;
-        //         end
-        //     end
-        // end
-
         //Arbitrer ACK state
         RET_ACK: begin
-            if (m_ack_tvalid_buff && m_axis_tready && s2mm_rd_meta_tvalid && m_bvalid_buff) begin
-                m_bready_buff = 1'b1;
-                m_axis_tvalid = 1'b1;
-                m_ack_tready_buff = 1'b1;
-                m_axis_tdata = m_ack_tdata_buff;
-                m_axis_tkeep = m_ack_tkeep_buff;
-                m_axis_tlast = m_ack_tlast_buff;
+            m_bready_buff = 1'b1;
+            m_axis_tvalid = 1'b1;
+            m_ack_tready_buff = 1'b1;
+            m_axis_tdata = m_ack_tdata_buff;
+            m_axis_tkeep = m_ack_tkeep_buff;
+            m_axis_tlast = m_ack_tlast_buff;
+            s2mm_rd_meta_tready = 1'b1;
+            metadata_mem_out_valid = 1'b1;
+            metadata_mem_out = s2mm_rd_meta_tdata;
 
-                s2mm_rd_meta_tready = 1'b1;
-                metadata_mem_out_valid = 1'b1;
-                metadata_mem_out = s2mm_rd_meta_tdata;
-
+            if (m_axis_tready) begin
                 sel_n = RET_TYPE;
             end
         end
 
         //Arbitrer READ state
         RET_READ: begin
-            if (m_tvalid_buff && m_axis_tready) begin            
-                m_axis_tvalid = 1'b1;
-                m_tready_buff = 1'b1;
-                m_axis_tdata  = m_tlast_buff ? {4'h0, m_tdata_buff[507:0]} : m_tdata_buff;
-                m_axis_tkeep  = m_tlast_buff ? {4'h0, m_tkeep_buff[59:0]}  : m_tkeep_buff;
-                m_axis_tlast  = m_tlast_buff;
 
+            m_axis_tvalid = 1'b1;
+            m_tready_buff = 1'b1;
+            m_axis_tdata  = m_tlast_buff ? {4'h0, m_tdata_buff[507:0]} : m_tdata_buff;
+            m_axis_tkeep  = m_tlast_buff ? {4'h0, m_tkeep_buff[59:0]}  : m_tkeep_buff;
+            m_axis_tlast  = m_tlast_buff;
+            if (!sent_first_read) begin
+                mm2s_rd_meta_tready = 1'b1;
+                metadata_mem_out_valid = 1'b1;
+                metadata_mem_out = mm2s_rd_meta_tdata;
+            end
 
-            
-                if (!sent_first_read) begin
-                    mm2s_rd_meta_tready = 1'b1;
-                    metadata_mem_out_valid = 1'b1;
-                    metadata_mem_out = mm2s_rd_meta_tdata;
-                end
-
+            if (m_axis_tready) begin            
                 if(m_tlast_buff) begin
                     sel_n = RET_TYPE;
-                end
-
-            end
-            else begin
+                end else 
+                    sel_n = RET_READ;
+            end else begin
                 sel_n = RET_READ;
             end
         end

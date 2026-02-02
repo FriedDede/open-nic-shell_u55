@@ -3,4 +3,6 @@ set ips {
   packet_filter
   packet_parser
   packet_deparser
+  packet_arbiter_mt
+  axis_demux
 }

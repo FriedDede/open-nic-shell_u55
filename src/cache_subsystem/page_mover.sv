@@ -226,6 +226,10 @@ module page_mover #(
                     o_done <= 1;
                     state  <= IDLE;
                 end
+
+                default: begin
+                    state <= IDLE;
+                end
             endcase
         end
     end

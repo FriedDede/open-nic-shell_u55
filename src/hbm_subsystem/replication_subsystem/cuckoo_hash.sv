@@ -542,7 +542,7 @@ module cuckoo_hash # (
         m_axi_arburst[i]        =   2'b1;    // Incrementing burst
         m_axi_arcache[i]        =   4'b0;    // Non-bufferable non-cacheable
         m_axi_arprot[i]         =   3'b0;    // Unpriviliged secure data
-        m_axi_arid[i]           =   4'b0;
+        m_axi_arid[i]           =   i;
         m_axi_arlen[i]          =   4'b0;    // 1 beat transfer
         m_axi_arlock[i]         =   2'b0;    // Normal accesses
         m_axi_arsize[i]         =   3'b100;  // 16 bytes transfer
@@ -551,7 +551,7 @@ module cuckoo_hash # (
         m_axi_awburst[i]        =   2'b1;    // Incrementing burst
         m_axi_awcache[i]        =   4'b0;    // Non-bufferable non-cacheable
         m_axi_awprot[i]         =   3'b0;    // Unpriviliged secure data
-        m_axi_awid[i]           =   4'b0;
+        m_axi_awid[i]           =   i;
         m_axi_awlen[i]          =   4'b0;    // 1 beat transfer
         m_axi_awlock[i]         =   2'b0;    // Normal accesses
         m_axi_awsize[i]         =   3'b010;  // 4 bytes transfer
