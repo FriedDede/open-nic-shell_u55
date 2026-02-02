@@ -8,19 +8,21 @@
 module kvs_subsystem_mt 
 import metadata_pkg::*;
 import axi_pkg::*;
+import kvs_pkg::*;
 #(
-  parameter int                     DATA_WIDTH      = 512,
-  parameter int                     MAX_NODES       = 32,
-  parameter int                     BUCKET_SIZE     = 1024,
-  parameter logic            [31:0] NODE_IP         = '0,
-  parameter logic            [47:0] NODE_MAC        = '0,
-  parameter int                     TIMER_WIDTH     = 30,  // ~4.2 s
-  parameter int                     USE_CONTROLLER  = 1,
-  parameter int                     SEED            = 32'hdeadbeef,
+  parameter int                     DATA_WIDTH      = 512,     
+  parameter int                     MAX_NODES       = kvs_pkg::MAX_NODES,      
+  parameter logic            [31:0] NODE_IP         = kvs_pkg::NODE_IP,        
+  parameter logic            [47:0] NODE_MAC        = kvs_pkg::NODE_MAC,       
+
+  parameter int                     BUCKET_SIZE     = kvs_pkg::BUCKET_SIZE,    
+  parameter int                     TIMER_WIDTH     = kvs_pkg::TIMER_WIDTH,    
+  parameter int                     USE_CONTROLLER  = kvs_pkg::USE_CONTROLLER, 
+  parameter int                     SEED            = kvs_pkg::SEED,           
   // default mapping [mem 0x0000000400000000-0x00000007ffffffff]
-  parameter logic [63:0]            BASE_HOST_MEM   = 64'h0000000400000000, // starts at 16GB by default
-  parameter logic [63:0]            MASK_HOST_MEM   = 64'h00000003ffffffff, // 16GB by defaults
-  parameter logic [TIMER_WIDTH-1:0] TAP_MASK        = 30'h60000000,
+  parameter logic [63:0]            BASE_HOST_MEM   = kvs_pkg::BASE_HOST_MEM,
+  parameter logic [63:0]            MASK_HOST_MEM   = kvs_pkg::MASK_HOST_MEM,
+  parameter logic [TIMER_WIDTH-1:0] TAP_MASK        = kvs_pkg::TAP_MASK,     
   parameter int                     N_THREADS      = 4
 ) (
   input          axis_aclk,
@@ -164,82 +166,6 @@ import axi_pkg::*;
   output         s_axis_cmac_c2h_tready
 );
 
-localparam NUM_HASHES    = 4;
-localparam ADDRESS_WIDTH = 34;  // 16 GB
-localparam HASH_WIDTH    = ADDRESS_WIDTH - $clog2(BUCKET_SIZE);
-
-localparam logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_HASHES][KEY_WIDTH-1:0] = '{{
-  24'hA3C5D1, 24'hD4F921, 24'h98B337, 24'h345678,
-  24'hEAD00F, 24'hADC0DE, 24'h55AAAA, 24'hACE123,
-  24'hF23456, 24'hBEEF12, 24'h0FFEE0, 24'hBADB07,
-  24'hBCDEF0, 24'hBCDE12, 24'h4679BD, 24'h2468AC,
-  24'hAAAAAA, 24'hBBBBBB, 24'hCCCCCC, 24'h234567,
-  24'h654321, 24'hEDCBA9, 24'hACEACE, 24'hC001D0,
-  24'hEADC0D, 24'hADD00D, 24'h0DEC0D, 24'hDCAFE,
-  24'h3579BF, 24'h468ACE, 24'h579BDF, 24'h68ACED,
-  24'h55AAAA, 24'h66BBBB, 24'h77CCCC, 24'h88DDDD,
-  24'h99EEEE, 24'hAAFFFF, 24'hBBB111, 24'hCCC222,
-  24'hDDD333, 24'hEEE444, 24'hFFF555, 24'h111222,
-  24'h222333, 24'h333444, 24'h444555, 24'h555666,
-  24'h666777, 24'h777888, 24'h888999, 24'h999AAA,
-  24'hAAA111, 24'hBBB222, 24'hCCC333, 24'hDDD444,
-  24'hEEE555, 24'hFFF666, 24'h2345AB, 24'hDC123,
-  24'h4567CD, 24'h6789EF, 24'h89AB12, 24'hBCDEF3
-}, {
-  24'h123456, 24'h234567, 24'h345678, 24'h456789,
-  24'h56789A, 24'h6789AB, 24'h789ABC, 24'h89ABCD,
-  24'h9ABCDE, 24'hABCDE0, 24'hBCDEF1, 24'hCDEF12,
-  24'hDEF123, 24'hEF1234, 24'hF12345, 24'h012345,
-  24'h111111, 24'h222222, 24'h333333, 24'h444444,
-  24'h555555, 24'h666666, 24'h777777, 24'h888888,
-  24'h999999, 24'hAAAAAA, 24'hBBBBBB, 24'hCCCCCC,
-  24'hDDDDDD, 24'hEEEEEE, 24'hFFFFFF, 24'h000000,
-  24'h13579B, 24'h2468AC, 24'h3579BD, 24'h468ACE,
-  24'h579BDF, 24'h68ACEF, 24'h79BDF0, 24'h8ACE01,
-  24'h9BDF12, 24'hACEF23, 24'hBDF034, 24'hCEF145,
-  24'hDF0256, 24'hEF1367, 24'hF02478, 24'h012589,
-  24'h12369A, 24'h2347AB, 24'h3458BC, 24'h4569CD,
-  24'h567ADE, 24'h678BEF, 24'h789C01, 24'h89AD12,
-  24'h9ABE23, 24'hABCF34, 24'hBC0145, 24'hCD1256,
-  24'hDE2367, 24'hEF3478, 24'hF04589, 24'h01269A
-}, {
-  24'hFACE01, 24'hDEAD02, 24'hBEEF03, 24'hCAFE04,
-  24'hBABE05, 24'hFEED06, 24'hC0DE07, 24'hF00D08,
-  24'h1CED09, 24'hBAD10A, 24'hC0010B, 24'hDAD10C,
-  24'hACED0D, 24'hBA510E, 24'hD00D0F, 24'hFEED10,
-  24'h111AAA, 24'h222BBB, 24'h333CCC, 24'h444DDD,
-  24'h555EEE, 24'h666FFF, 24'h777000, 24'h888111,
-  24'h999222, 24'hAAA333, 24'hBBB444, 24'hCCC555,
-  24'hDDD666, 24'hEEE777, 24'hFFF888, 24'h000999,
-  24'hAAAA01, 24'hBBBB02, 24'hCCCC03, 24'hDDDD04,
-  24'hEEEE05, 24'hFFFF06, 24'h123407, 24'h234508,
-  24'h345609, 24'h45670A, 24'h56780B, 24'h67890C,
-  24'h789A0D, 24'h89AB0E, 24'h9ABC0F, 24'hABCD10,
-  24'hBCDE11, 24'hCDEF12, 24'hDEF013, 24'hEF0114,
-  24'hF01215, 24'h012316, 24'h123417, 24'h234518,
-  24'h345619, 24'h45671A, 24'h56781B, 24'h67891C,
-  24'h789A1D, 24'h89AB1E, 24'h9ABC1F, 24'hABCD20
-}, {
-  24'h102938, 24'h293847, 24'h384756, 24'h475665,
-  24'h566574, 24'h665483, 24'h754392, 24'h843A01,
-  24'h932B10, 24'hA21C20, 24'hB10D30, 24'hC00E40,
-  24'hDF0F50, 24'hEE1060, 24'hFD1170, 24'h0C1280,
-  24'h1B1390, 24'h2A14A0, 24'h3915B0, 24'h4816C0,
-  24'h5717D0, 24'h6618E0, 24'h7519F0, 24'h842A00,
-  24'h933B10, 24'hA24C20, 24'hB15D30, 24'hC06E40,
-  24'hD17F50, 24'hE29060, 24'hF3A170, 24'h04B280,
-  24'h15C390, 24'h26D4A0, 24'h37E5B0, 24'h48F6C0,
-  24'h5907D0, 24'h6A18E0, 24'h7B29F0, 24'h8C3A00,
-  24'h9D4B10, 24'hAE5C20, 24'hBF6D30, 24'hD07E40,
-  24'hE18F50, 24'hF2A060, 24'h03B170, 24'h14C280,
-  24'h25D390, 24'h36E4A0, 24'h47F5B0, 24'h5806C0,
-  24'h6917D0, 24'h7A28E0, 24'h8B39F0, 24'h9C4A00,
-  24'hAD5B10, 24'hBE6C20, 24'hCF7D30, 24'hD08E40,
-  24'hE19F50, 24'hF2B060, 24'h03C170, 24'h14D280
-}};
-
-
-
 AXI_BUS #(
   .AXI_ADDR_WIDTH(34),
   .AXI_DATA_WIDTH(512),
@@ -283,7 +209,7 @@ st_metadata   replication_metadata       [N_THREADS];
 logic         replication_metadata_valid [N_THREADS];
 
 // The reset waits until the HBM has finished initial configuration
-logic apb_complete_0;
+logic apb_complete_0, apb_complete_1;
 logic apb_complete_reg;
 logic rstn;
 
@@ -293,7 +219,7 @@ always_ff @(posedge axis_aclk) begin
   if(~axi_rstn)
     apb_complete_reg <= 1'b0;
   else
-    apb_complete_reg <= apb_complete_0;
+    apb_complete_reg <= apb_complete_0 & apb_complete_1;
 end
 
 // The valid signal for the parser's incoming user metadata is raised only on the first beat
@@ -378,24 +304,24 @@ packet_filter packet_filter_inst (
 );
 
 replication_subsystem_mt #(
-    .DATA_WIDTH(DATA_WIDTH),
-    .NODE_IP(NODE_IP),
-    .NODE_MAC(NODE_MAC),
-    .MAX_NODES(MAX_NODES),
-    .BUCKET_SIZE(BUCKET_SIZE),
-    .NUM_HASHES(NUM_HASHES),
-    .HASH_WIDTH(HASH_WIDTH),
-    .TIMER_WIDTH(TIMER_WIDTH),
-    .SEED(SEED),
-    .USE_CONTROLLER(USE_CONTROLLER),
-    .TAP_MASK(TAP_MASK),
-    .HASH_MATRIX(HASH_MATRIX),
-    .N_THREADS(4)
+    .DATA_WIDTH		(kvs_pkg::DATA_WIDTH),
+    .NODE_IP		(kvs_pkg::NODE_IP),
+    .NODE_MAC		(kvs_pkg::NODE_MAC),
+    .MAX_NODES		(kvs_pkg::MAX_NODES),
+    .BUCKET_SIZE	(kvs_pkg::BUCKET_SIZE),
+    .NUM_HASHES		(kvs_pkg::NUM_HASHES),
+    .HASH_WIDTH		(kvs_pkg::HASH_WIDTH),
+    .TIMER_WIDTH	(kvs_pkg::TIMER_WIDTH),
+    .SEED			(kvs_pkg::SEED),
+    .USE_CONTROLLER	(kvs_pkg::USE_CONTROLLER),
+    .TAP_MASK		(kvs_pkg::TAP_MASK),
+    .HASH_MATRIX	(kvs_pkg::HASH_MATRIX),
+    .N_THREADS		(kvs_pkg::N_THREADS)
 ) replication_subsystem_mt_instance (
   
   .axis_aclk          (axis_aclk),
   .axil_aclk          (axil_aclk),
-  .axi_rstn           (axi_rstn),
+  .axi_rstn           (rstn),
 
   .s_axis_tvalid      (axis_filter_to_replication_tvalid),
   .s_axis_tdata       (axis_filter_to_replication_tdata),
@@ -415,6 +341,7 @@ replication_subsystem_mt #(
   .metadata_out       (replication_metadata),
   .metadata_out_valid (replication_metadata_valid),
 
+  // kvs engine to mem (4 channels)
   .m_axi_mem_araddr   ({axi_mm_pf_to_hbm[0].ar_addr,  axi_mm_pf_to_hbm[1].ar_addr,  axi_mm_pf_to_hbm[2].ar_addr,  axi_mm_pf_to_hbm[3].ar_addr }),
   .m_axi_mem_arburst  ({axi_mm_pf_to_hbm[0].ar_burst, axi_mm_pf_to_hbm[1].ar_burst, axi_mm_pf_to_hbm[2].ar_burst, axi_mm_pf_to_hbm[3].ar_burst }),
   .m_axi_mem_arcache  ({axi_mm_pf_to_hbm[0].ar_cache, axi_mm_pf_to_hbm[1].ar_cache, axi_mm_pf_to_hbm[2].ar_cache, axi_mm_pf_to_hbm[3].ar_cache }),
@@ -447,6 +374,13 @@ replication_subsystem_mt #(
   .m_axi_mem_wstrb    ({axi_mm_pf_to_hbm[0].w_strb,   axi_mm_pf_to_hbm[1].w_strb,   axi_mm_pf_to_hbm[2].w_strb,   axi_mm_pf_to_hbm[3].w_strb }),
   .m_axi_mem_wvalid   ({axi_mm_pf_to_hbm[0].w_valid,  axi_mm_pf_to_hbm[1].w_valid,  axi_mm_pf_to_hbm[2].w_valid,  axi_mm_pf_to_hbm[3].w_valid }),
 
+  // unused IDs
+  .m_axi_mem_arid(),
+  .m_axi_mem_awid(),
+  .m_axi_mem_rid(),
+  .m_axi_mem_bid(),
+
+  // axi lite cfg
   .s_axil_awvalid     (s_axil_awvalid),
   .s_axil_awaddr      (s_axil_awaddr),
   .s_axil_awready     (s_axil_awready),
@@ -497,7 +431,7 @@ packet_arbiter_mt packet_arbiter_inst (
   .s_axis_tdata            ({axis_deparser_to_arbiter_tdata [0], axis_deparser_to_arbiter_tdata [1], axis_deparser_to_arbiter_tdata [2], axis_deparser_to_arbiter_tdata [3], s_axis_qdma_h2c_tdata}),
   .s_axis_tkeep            ({axis_deparser_to_arbiter_tkeep [0], axis_deparser_to_arbiter_tkeep [1], axis_deparser_to_arbiter_tkeep [2], axis_deparser_to_arbiter_tkeep [3], s_axis_qdma_h2c_tkeep}),
   .s_axis_tlast            ({axis_deparser_to_arbiter_tlast [0], axis_deparser_to_arbiter_tlast [1], axis_deparser_to_arbiter_tlast [2], axis_deparser_to_arbiter_tlast [3], s_axis_qdma_h2c_tlast}),
-  .s_axis_tuser            ({{16'h0, 16'h0, 16'h0040}, {s_axis_qdma_h2c_tuser_size, s_axis_qdma_h2c_tuser_src, s_axis_qdma_h2c_tuser_dst}}),
+  .s_axis_tuser            ({{16'h0, 16'h0, 16'h0040},{16'h0, 16'h0, 16'h0040},{16'h0, 16'h0, 16'h0040},{16'h0, 16'h0, 16'h0040}, {s_axis_qdma_h2c_tuser_size, s_axis_qdma_h2c_tuser_src, s_axis_qdma_h2c_tuser_dst}}),
   .s_axis_tready           ({axis_deparser_to_arbiter_tready[0], axis_deparser_to_arbiter_tready[1], axis_deparser_to_arbiter_tready[2], axis_deparser_to_arbiter_tready[3],s_axis_qdma_h2c_tready}),
 
   .m_axis_tvalid           (m_axis_cmac_h2c_tvalid),
@@ -569,9 +503,12 @@ hbm_interface_wrapper i_hbm(
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S02,axi_mm_pf_to_hbm[2])
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S03,axi_mm_pf_to_hbm[3])
 
-    .aresetn_0 (axi_rstn),
+    .aresetn_0 (rstn),
     .axi_clk   (axis_aclk),
+
 	.apb_complete_0_0  (apb_complete_0),
+	.apb_complete_1_0  (apb_complete_1),
+	.apb_reset         (axi_rstn)
     );
 
 endmodule;

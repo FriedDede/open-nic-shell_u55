@@ -25,19 +25,7 @@ module open_nic_shell #(
   parameter int          NUM_PHYS_FUNC   = 1,
   parameter int          NUM_QUEUE       = 512,
   parameter int          NUM_QDMA        = 1,
-  parameter int          NUM_CMAC_PORT   = 1,
-
-  // Replication parameters
-  parameter logic [31:0] NODE_IP         = 32'hC0643300,
-  parameter logic [47:0] NODE_MAC        = 48'h020A35070000,
-  parameter int          MAX_NODES       = 32,
-  parameter int          BUCKET_SIZE     = 1024,
-
-  // Leader election parameters
-  parameter int          USE_CONTROLLER  = 1,
-  parameter int          TIMER_WIDTH     = 30,  // ~4.2 s
-  parameter int          SEED            = 32'hdeadbeef,  // Used in RNG
-  parameter logic [TIMER_WIDTH-1:0] TAP_MASK = 30'h60000000
+  parameter int          NUM_CMAC_PORT   = 1  
 ) (
 
 // Fix the CATTRIP issue for AU280, AU50, AU55C, and AU55N custom flow
@@ -936,13 +924,6 @@ module open_nic_shell #(
   endgenerate
 
   kvs_subsystem #(
-    .BUCKET_SIZE                      (BUCKET_SIZE),
-    .NODE_IP                          (NODE_IP),
-    .NODE_MAC                         (NODE_MAC),
-    // default mapping [mem 0x0000000400000000-0x00000007ffffffff]
-    // reserved 16GB from 16GB to 32GB
-    .BASE_HOST_MEM (64'h0000000400000000),
-    .MASK_HOST_MEM (64'h00000003ffffffff)
   ) kvs_subsystem_inst (
     .s_axil_awvalid                   (axil_box0_awvalid),
     .s_axil_awaddr                    (axil_box0_awaddr),

@@ -11,18 +11,18 @@ module kvs_subsystem
 import metadata_pkg::*;
 import axi_pkg::*;
 #(
-  parameter int                     DATA_WIDTH      = 512,
-  parameter int                     MAX_NODES       = 32,
-  parameter int                     BUCKET_SIZE     = 1024,
-  parameter logic            [31:0] NODE_IP         = '0,
-  parameter logic            [47:0] NODE_MAC        = '0,
-  parameter int                     TIMER_WIDTH     = 30,  // ~4.2 s
-  parameter int                     USE_CONTROLLER  = 1,
-  parameter int                     SEED            = 32'hdeadbeef,
+  parameter int                     DATA_WIDTH      = 512,     
+  parameter int                     MAX_NODES       = kvs_pkg::MAX_NODES,      
+  parameter logic            [31:0] NODE_IP         = kvs_pkg::NODE_IP,        
+  parameter logic            [47:0] NODE_MAC        = kvs_pkg::NODE_MAC,       
+  parameter int                     BUCKET_SIZE     = kvs_pkg::BUCKET_SIZE,    
+  parameter int                     TIMER_WIDTH     = kvs_pkg::TIMER_WIDTH,    
+  parameter int                     USE_CONTROLLER  = kvs_pkg::USE_CONTROLLER, 
+  parameter int                     SEED            = kvs_pkg::SEED,           
   // default mapping [mem 0x0000000400000000-0x00000007ffffffff]
-  parameter logic [63:0]            BASE_HOST_MEM   = 64'h0000000400000000, // starts at 16GB by default
-  parameter logic [63:0]            MASK_HOST_MEM   = 64'h00000003ffffffff, // 16GB by defaults
-  parameter logic [TIMER_WIDTH-1:0] TAP_MASK        = 30'h60000000
+  parameter logic [63:0]            BASE_HOST_MEM   = kvs_pkg::BASE_HOST_MEM,
+  parameter logic [63:0]            MASK_HOST_MEM   = kvs_pkg::MASK_HOST_MEM,
+  parameter logic [TIMER_WIDTH-1:0] TAP_MASK        = kvs_pkg::TAP_MASK
 ) (
   input          axis_aclk,
   input          axil_aclk,
@@ -165,119 +165,44 @@ import axi_pkg::*;
   output         s_axis_cmac_c2h_tready
 );
 
-localparam NUM_HASHES    = 4;
-localparam ADDRESS_WIDTH = 34;  // 16 GB
-localparam HASH_WIDTH    = ADDRESS_WIDTH - $clog2(BUCKET_SIZE);
-
-localparam logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_HASHES][KEY_WIDTH-1:0] = '{{
-  24'hA3C5D1, 24'hD4F921, 24'h98B337, 24'h345678,
-  24'hEAD00F, 24'hADC0DE, 24'h55AAAA, 24'hACE123,
-  24'hF23456, 24'hBEEF12, 24'h0FFEE0, 24'hBADB07,
-  24'hBCDEF0, 24'hBCDE12, 24'h4679BD, 24'h2468AC,
-  24'hAAAAAA, 24'hBBBBBB, 24'hCCCCCC, 24'h234567,
-  24'h654321, 24'hEDCBA9, 24'hACEACE, 24'hC001D0,
-  24'hEADC0D, 24'hADD00D, 24'h0DEC0D, 24'hDCAFE,
-  24'h3579BF, 24'h468ACE, 24'h579BDF, 24'h68ACED,
-  24'h55AAAA, 24'h66BBBB, 24'h77CCCC, 24'h88DDDD,
-  24'h99EEEE, 24'hAAFFFF, 24'hBBB111, 24'hCCC222,
-  24'hDDD333, 24'hEEE444, 24'hFFF555, 24'h111222,
-  24'h222333, 24'h333444, 24'h444555, 24'h555666,
-  24'h666777, 24'h777888, 24'h888999, 24'h999AAA,
-  24'hAAA111, 24'hBBB222, 24'hCCC333, 24'hDDD444,
-  24'hEEE555, 24'hFFF666, 24'h2345AB, 24'hDC123,
-  24'h4567CD, 24'h6789EF, 24'h89AB12, 24'hBCDEF3
-}, {
-  24'h123456, 24'h234567, 24'h345678, 24'h456789,
-  24'h56789A, 24'h6789AB, 24'h789ABC, 24'h89ABCD,
-  24'h9ABCDE, 24'hABCDE0, 24'hBCDEF1, 24'hCDEF12,
-  24'hDEF123, 24'hEF1234, 24'hF12345, 24'h012345,
-  24'h111111, 24'h222222, 24'h333333, 24'h444444,
-  24'h555555, 24'h666666, 24'h777777, 24'h888888,
-  24'h999999, 24'hAAAAAA, 24'hBBBBBB, 24'hCCCCCC,
-  24'hDDDDDD, 24'hEEEEEE, 24'hFFFFFF, 24'h000000,
-  24'h13579B, 24'h2468AC, 24'h3579BD, 24'h468ACE,
-  24'h579BDF, 24'h68ACEF, 24'h79BDF0, 24'h8ACE01,
-  24'h9BDF12, 24'hACEF23, 24'hBDF034, 24'hCEF145,
-  24'hDF0256, 24'hEF1367, 24'hF02478, 24'h012589,
-  24'h12369A, 24'h2347AB, 24'h3458BC, 24'h4569CD,
-  24'h567ADE, 24'h678BEF, 24'h789C01, 24'h89AD12,
-  24'h9ABE23, 24'hABCF34, 24'hBC0145, 24'hCD1256,
-  24'hDE2367, 24'hEF3478, 24'hF04589, 24'h01269A
-}, {
-  24'hFACE01, 24'hDEAD02, 24'hBEEF03, 24'hCAFE04,
-  24'hBABE05, 24'hFEED06, 24'hC0DE07, 24'hF00D08,
-  24'h1CED09, 24'hBAD10A, 24'hC0010B, 24'hDAD10C,
-  24'hACED0D, 24'hBA510E, 24'hD00D0F, 24'hFEED10,
-  24'h111AAA, 24'h222BBB, 24'h333CCC, 24'h444DDD,
-  24'h555EEE, 24'h666FFF, 24'h777000, 24'h888111,
-  24'h999222, 24'hAAA333, 24'hBBB444, 24'hCCC555,
-  24'hDDD666, 24'hEEE777, 24'hFFF888, 24'h000999,
-  24'hAAAA01, 24'hBBBB02, 24'hCCCC03, 24'hDDDD04,
-  24'hEEEE05, 24'hFFFF06, 24'h123407, 24'h234508,
-  24'h345609, 24'h45670A, 24'h56780B, 24'h67890C,
-  24'h789A0D, 24'h89AB0E, 24'h9ABC0F, 24'hABCD10,
-  24'hBCDE11, 24'hCDEF12, 24'hDEF013, 24'hEF0114,
-  24'hF01215, 24'h012316, 24'h123417, 24'h234518,
-  24'h345619, 24'h45671A, 24'h56781B, 24'h67891C,
-  24'h789A1D, 24'h89AB1E, 24'h9ABC1F, 24'hABCD20
-}, {
-  24'h102938, 24'h293847, 24'h384756, 24'h475665,
-  24'h566574, 24'h665483, 24'h754392, 24'h843A01,
-  24'h932B10, 24'hA21C20, 24'hB10D30, 24'hC00E40,
-  24'hDF0F50, 24'hEE1060, 24'hFD1170, 24'h0C1280,
-  24'h1B1390, 24'h2A14A0, 24'h3915B0, 24'h4816C0,
-  24'h5717D0, 24'h6618E0, 24'h7519F0, 24'h842A00,
-  24'h933B10, 24'hA24C20, 24'hB15D30, 24'hC06E40,
-  24'hD17F50, 24'hE29060, 24'hF3A170, 24'h04B280,
-  24'h15C390, 24'h26D4A0, 24'h37E5B0, 24'h48F6C0,
-  24'h5907D0, 24'h6A18E0, 24'h7B29F0, 24'h8C3A00,
-  24'h9D4B10, 24'hAE5C20, 24'hBF6D30, 24'hD07E40,
-  24'hE18F50, 24'hF2A060, 24'h03B170, 24'h14C280,
-  24'h25D390, 24'h36E4A0, 24'h47F5B0, 24'h5806C0,
-  24'h6917D0, 24'h7A28E0, 24'h8B39F0, 24'h9C4A00,
-  24'hAD5B10, 24'hBE6C20, 24'hCF7D30, 24'hD08E40,
-  24'hE19F50, 24'hF2B060, 24'h03C170, 24'h14D280
-}};
-
-
 logic                 [63:0]  m_axi_sys_mem_awaddr_internal;
 logic                 [63:0]  m_axi_sys_mem_araddr_internal;
 
-logic  [33:0] axi_araddr   [NUM_HASHES];
-logic   [1:0] axi_arburst  [NUM_HASHES];
-logic   [3:0] axi_arcache  [NUM_HASHES];
-logic   [3:0] axi_arid     [NUM_HASHES];
-logic   [3:0] axi_arlen    [NUM_HASHES];
-logic   [1:0] axi_arlock   [NUM_HASHES];
-logic   [2:0] axi_arprot   [NUM_HASHES];
-logic         axi_arready  [NUM_HASHES];
-logic   [2:0] axi_arsize   [NUM_HASHES];
-logic         axi_arvalid  [NUM_HASHES];
-logic  [33:0] axi_awaddr   [NUM_HASHES];
-logic   [1:0] axi_awburst  [NUM_HASHES];
-logic   [3:0] axi_awcache  [NUM_HASHES];
-logic   [3:0] axi_awid     [NUM_HASHES];
-logic   [3:0] axi_awlen    [NUM_HASHES];
-logic   [1:0] axi_awlock   [NUM_HASHES];
-logic   [2:0] axi_awprot   [NUM_HASHES];
-logic         axi_awready  [NUM_HASHES];
-logic   [2:0] axi_awsize   [NUM_HASHES];
-logic         axi_awvalid  [NUM_HASHES];
-logic   [3:0] axi_bid      [NUM_HASHES];
-logic         axi_bready   [NUM_HASHES];
-logic   [1:0] axi_bresp    [NUM_HASHES];
-logic         axi_bvalid   [NUM_HASHES];
-logic [255:0] axi_rdata    [NUM_HASHES];
-logic   [3:0] axi_rid      [NUM_HASHES];
-logic         axi_rlast    [NUM_HASHES];
-logic         axi_rready   [NUM_HASHES];
-logic   [1:0] axi_rresp    [NUM_HASHES];
-logic         axi_rvalid   [NUM_HASHES];
-logic [255:0] axi_wdata    [NUM_HASHES];
-logic         axi_wlast    [NUM_HASHES];
-logic         axi_wready   [NUM_HASHES];
-logic  [31:0] axi_wstrb    [NUM_HASHES];
-logic         axi_wvalid   [NUM_HASHES];
+logic  [33:0] axi_araddr   [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_arburst  [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_arcache  [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_arid     [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_arlen    [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_arlock   [kvs_pkg::NUM_HASHES];
+logic   [2:0] axi_arprot   [kvs_pkg::NUM_HASHES];
+logic         axi_arready  [kvs_pkg::NUM_HASHES];
+logic   [2:0] axi_arsize   [kvs_pkg::NUM_HASHES];
+logic         axi_arvalid  [kvs_pkg::NUM_HASHES];
+logic  [33:0] axi_awaddr   [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_awburst  [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_awcache  [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_awid     [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_awlen    [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_awlock   [kvs_pkg::NUM_HASHES];
+logic   [2:0] axi_awprot   [kvs_pkg::NUM_HASHES];
+logic         axi_awready  [kvs_pkg::NUM_HASHES];
+logic   [2:0] axi_awsize   [kvs_pkg::NUM_HASHES];
+logic         axi_awvalid  [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_bid      [kvs_pkg::NUM_HASHES];
+logic         axi_bready   [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_bresp    [kvs_pkg::NUM_HASHES];
+logic         axi_bvalid   [kvs_pkg::NUM_HASHES];
+logic [255:0] axi_rdata    [kvs_pkg::NUM_HASHES];
+logic   [3:0] axi_rid      [kvs_pkg::NUM_HASHES];
+logic         axi_rlast    [kvs_pkg::NUM_HASHES];
+logic         axi_rready   [kvs_pkg::NUM_HASHES];
+logic   [1:0] axi_rresp    [kvs_pkg::NUM_HASHES];
+logic         axi_rvalid   [kvs_pkg::NUM_HASHES];
+logic [255:0] axi_wdata    [kvs_pkg::NUM_HASHES];
+logic         axi_wlast    [kvs_pkg::NUM_HASHES];
+logic         axi_wready   [kvs_pkg::NUM_HASHES];
+logic  [31:0] axi_wstrb    [kvs_pkg::NUM_HASHES];
+logic         axi_wvalid   [kvs_pkg::NUM_HASHES];
 
 logic         axis_dm_write_tvalid;
 logic [511:0] axis_dm_write_tdata;
@@ -346,7 +271,7 @@ assign axis_dm_write_sts_tready = 1'b1;
 assign axis_dm_read_sts_tready  = 1'b1;
 
 // The reset waits until the HBM has finished initial configuration
-logic apb_complete_0;
+logic apb_complete_0, apb_complete_1;
 logic apb_complete_reg;
 logic rstn;
 
@@ -356,7 +281,7 @@ always_ff @(posedge axis_aclk) begin
   if(~axi_rstn)
     apb_complete_reg <= 1'b0;
   else
-    apb_complete_reg <= apb_complete_0;
+    apb_complete_reg <= apb_complete_0 & apb_complete_1;
 end
 
 // The valid signal for the parser's incoming user metadata is raised only on the first beat
@@ -443,17 +368,17 @@ packet_filter packet_filter_inst (
 replication_subsystem #(
   .DATA_WIDTH                (DATA_WIDTH),
   .FIFO_DEPTH                (16),
-  .NODE_IP                   (NODE_IP),
-  .NODE_MAC                  (NODE_MAC),
-  .MAX_NODES                 (MAX_NODES),
-  .BUCKET_SIZE               (BUCKET_SIZE),
-  .NUM_HASHES                (NUM_HASHES),
-  .HASH_WIDTH                (HASH_WIDTH),
-  .TIMER_WIDTH               (TIMER_WIDTH),
-  .SEED                      (SEED),
-  .TAP_MASK                  (TAP_MASK),
-  .USE_CONTROLLER            (USE_CONTROLLER),
-  .HASH_MATRIX               (HASH_MATRIX)
+  .NODE_IP                   (kvs_pkg::NODE_IP),
+  .NODE_MAC                  (kvs_pkg::NODE_MAC),
+  .MAX_NODES                 (kvs_pkg::MAX_NODES),
+  .BUCKET_SIZE               (kvs_pkg::BUCKET_SIZE),
+  .NUM_HASHES                (kvs_pkg::NUM_HASHES),
+  .HASH_WIDTH                (kvs_pkg::HASH_WIDTH),
+  .TIMER_WIDTH               (kvs_pkg::TIMER_WIDTH),
+  .SEED                      (kvs_pkg::SEED),
+  .TAP_MASK                  (kvs_pkg::TAP_MASK),
+  .USE_CONTROLLER            (kvs_pkg::USE_CONTROLLER),
+  .HASH_MATRIX               (kvs_pkg::HASH_MATRIX)
 ) replication_subsystem_inst (
   .axis_aclk                 (axis_aclk),
   .axil_aclk                 (axil_aclk),
@@ -886,7 +811,7 @@ prefilter_bd_wrapper i_pf(
     .M00_AXI_0_wvalid		(axi_mm_pf_to_hbm[0].w_valid),
 
     .axi_clk(axis_aclk),
-    .axi_resetn (axi_rstn),
+    .axi_resetn (rstn),
 
     .s_axis_dm_s2mm_tvalid           (axis_dm_write_tvalid),
     .s_axis_dm_s2mm_tdata            (axis_dm_write_tdata),
@@ -1094,9 +1019,12 @@ hbm_interface_wrapper i_hbm(
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S02,axi_mm_pf_to_hbm[2])
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S03,axi_mm_pf_to_hbm[3])
 
-    .aresetn_0 (axi_rstn),
+    .aresetn_0 (rstn),
     .axi_clk   (axis_aclk),
-    .apb_complete_0_0  (apb_complete_0)
+
+    .apb_complete_0_0  (apb_complete_0),
+    .apb_complete_1_0  (apb_complete_1),
+    .apb_reset         (axi_rstn)
     );
 
 endmodule;
