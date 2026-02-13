@@ -364,10 +364,12 @@ proc create_root_design { parentCell } {
   set axi_clk [ create_bd_port -dir I -type clk -freq_hz 250000000 axi_clk ]
   set_property -dict [ list \
    CONFIG.ASSOCIATED_BUSIF {S00_AXI_0:S01_AXI_0:S02_AXI_0:S03_AXI_0:QDMA_AXI} \
-   CONFIG.ASSOCIATED_RESET {aresetn_0} \
+   CONFIG.ASSOCIATED_RESET {aresetn_0:apb_reset} \
  ] $axi_clk
   set aresetn_0 [ create_bd_port -dir I -type rst aresetn_0 ]
   set apb_complete_0_0 [ create_bd_port -dir O apb_complete_0_0 ]
+  set apb_complete_1_0 [ create_bd_port -dir O apb_complete_1_0 ]
+  set apb_reset [ create_bd_port -dir I -type rst apb_reset ]
 
   # Create instance: hbm_0, and set properties
   set hbm_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:hbm:1.0 hbm_0 ]
@@ -619,7 +621,6 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   [get_bd_pins smartconnect_0/aresetn] \
   [get_bd_pins smartconnect_1/aresetn] \
   [get_bd_pins system_ila_1/probe0] \
-  [get_bd_pins proc_sys_reset_0/ext_reset_in] \
   [get_bd_pins proc_sys_reset_1/ext_reset_in]
   connect_bd_net -net axi_clk_ariane_0_1  [get_bd_ports axi_clk] \
   [get_bd_pins smartconnect_0/aclk] \
@@ -639,8 +640,12 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   connect_bd_net -net clk_wiz_0_locked  [get_bd_pins clk_wiz_0/locked] \
   [get_bd_pins proc_sys_reset_1/dcm_locked] \
   [get_bd_pins proc_sys_reset_0/dcm_locked]
+  connect_bd_net -net ext_reset_in_0_1  [get_bd_ports apb_reset] \
+  [get_bd_pins proc_sys_reset_0/ext_reset_in]
   connect_bd_net -net hbm_0_apb_complete_0  [get_bd_pins hbm_0/apb_complete_0] \
   [get_bd_ports apb_complete_0_0]
+  connect_bd_net -net hbm_0_apb_complete_1  [get_bd_pins hbm_0/apb_complete_1] \
+  [get_bd_ports apb_complete_1_0]
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn  [get_bd_pins proc_sys_reset_0/peripheral_aresetn] \
   [get_bd_pins hbm_0/APB_0_PRESET_N] \
   [get_bd_pins hbm_0/APB_1_PRESET_N] \

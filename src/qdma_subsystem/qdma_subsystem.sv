@@ -196,7 +196,6 @@ module qdma_subsystem #(
   input                          mod_rstn,
   output                         mod_rst_done,
 
-`ifdef __synthesis__
   output                         axil_aclk,
 
   `ifdef __au55n__
@@ -209,22 +208,7 @@ module qdma_subsystem #(
     output                         ref_clk_100mhz,        
   `endif
   output                         axis_aclk
-
-
-`else
-  output reg                     axil_aclk,
-
-  `ifdef __au55n__
-    output reg                        ref_clk_100mhz,
-  `elsif __au55c__
-    output reg                        ref_clk_100mhz,
-  `elsif __au50__
-    output reg                        ref_clk_100mhz,
-  `elsif __au280__
-    output reg                        ref_clk_100mhz,        
-  `endif
-  output reg                     axis_aclk
-`endif
+  
 );
 
   wire         axis_qdma_h2c_tvalid;

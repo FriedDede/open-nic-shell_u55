@@ -17,7 +17,7 @@
 
 
 /// An AXI4 interface.
-interface AXI_BUS #(
+interface AXI_BUS import axi_pkg::*; #(
   parameter int unsigned AXI_ADDR_WIDTH = 0,
   parameter int unsigned AXI_DATA_WIDTH = 0,
   parameter int unsigned AXI_ID_WIDTH   = 0,

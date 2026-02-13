@@ -45,7 +45,7 @@ module replication_subsystem_mt #(
   output logic            [1:0] m_axi_mem_arburst  [N_THREADS],
   output logic            [3:0] m_axi_mem_arcache  [N_THREADS],
   output logic            [3:0] m_axi_mem_arid     [N_THREADS],
-  output logic            [3:0] m_axi_mem_arlen    [N_THREADS],
+  output logic            [7:0] m_axi_mem_arlen    [N_THREADS],
   output logic            [1:0] m_axi_mem_arlock   [N_THREADS],
   output logic            [2:0] m_axi_mem_arprot   [N_THREADS],
   input  logic                  m_axi_mem_arready  [N_THREADS],
@@ -55,7 +55,7 @@ module replication_subsystem_mt #(
   output logic            [1:0] m_axi_mem_awburst  [N_THREADS],
   output logic            [3:0] m_axi_mem_awcache  [N_THREADS],
   output logic            [3:0] m_axi_mem_awid     [N_THREADS],
-  output logic            [3:0] m_axi_mem_awlen    [N_THREADS],
+  output logic            [7:0] m_axi_mem_awlen    [N_THREADS],
   output logic            [1:0] m_axi_mem_awlock   [N_THREADS],
   output logic            [2:0] m_axi_mem_awprot   [N_THREADS],
   input  logic                  m_axi_mem_awready  [N_THREADS],
@@ -74,7 +74,7 @@ module replication_subsystem_mt #(
   output logic[DATA_WIDTH -1:0] m_axi_mem_wdata    [N_THREADS],
   output logic                  m_axi_mem_wlast    [N_THREADS],
   input  logic                  m_axi_mem_wready   [N_THREADS],
-  output logic           [31:0] m_axi_mem_wstrb    [N_THREADS],
+  output logic[(DATA_WIDTH/8)-1:0] m_axi_mem_wstrb [N_THREADS],
   output logic                  m_axi_mem_wvalid   [N_THREADS],
 
   input  logic           [31:0] s_axil_awaddr,
@@ -103,10 +103,13 @@ module replication_subsystem_mt #(
 logic is_leader;
 // Buffer metadata arbiter inputs in FIFO
 st_metadata     election_metadata_out_reg;
-logic           election_metadata_ready;
+logic           [N_THREADS-1 :0] election_metadata_ready;
+logic           election_metadata_ready_any;
 logic           election_metadata_empty;
 st_metadata     election_metadata_out;
 logic           election_metadata_out_valid;
+
+assign election_metadata_ready_any = (election_metadata_ready == '0) ? 1'b0 : 1'b1;
 
 election_engine #(
     .MAX_NODES                 (MAX_NODES),
@@ -166,7 +169,7 @@ xpm_fifo_sync #(
     .wr_en               (election_metadata_out_valid),
     .din                 (election_metadata_out),
     .wr_ack              (),
-    .rd_en               (election_metadata_ready),
+    .rd_en               (election_metadata_ready_any),
     .data_valid          (),
     .dout                (election_metadata_out_reg),
     .wr_data_count       (),
@@ -207,9 +210,9 @@ logic [1:0]            tdest;
 
 always_ff @(posedge axis_aclk) begin
     if (!axi_rstn) tdest <= '0;
-    else if (s_axis_tlast && s_axis_tready) begin
+    else if (s_axis_tlast && s_axis_tvalid && s_axis_tready) begin
         if (tdest == 2'b11) tdest <= 2'b00;
-        else tdest = tdest + 1;
+        else tdest <= tdest + 1;
     end
 end
 
@@ -223,12 +226,12 @@ axis_demux i_repl_demux (
   .s_axis_tdest            (tdest),
   .s_axis_tready           (s_axis_tready),
 
-  .m_axis_tvalid           (axis_rep_input_tvalid),
-  .m_axis_tdata            (axis_rep_input_tdata ),
-  .m_axis_tkeep            (axis_rep_input_tkeep ),
-  .m_axis_tlast            (axis_rep_input_tlast ),
+  .m_axis_tvalid           ({axis_rep_input_tvalid[3],axis_rep_input_tvalid[2],axis_rep_input_tvalid[1],axis_rep_input_tvalid[0]}),
+  .m_axis_tdata            ({axis_rep_input_tdata [3],axis_rep_input_tdata [2] ,axis_rep_input_tdata[1] ,axis_rep_input_tdata[0] } ),
+  .m_axis_tkeep            ({axis_rep_input_tkeep [3],axis_rep_input_tkeep [2] ,axis_rep_input_tkeep[1] ,axis_rep_input_tkeep[0] } ),
+  .m_axis_tlast            ({axis_rep_input_tlast [3],axis_rep_input_tlast [2] ,axis_rep_input_tlast[1] ,axis_rep_input_tlast[0] } ),
   .m_axis_tdest            (),
-  .m_axis_tready           (axis_rep_input_tready),
+  .m_axis_tready           ({axis_rep_input_tready[3],axis_rep_input_tready[2],axis_rep_input_tready[1],axis_rep_input_tready[0]}),
 
   .s_decode_err            (),
   .aclk                    (axis_aclk),
@@ -379,7 +382,7 @@ generate
         always_comb begin
             metadata_out_valid[i]     = 1'b0;
             metadata_out[i]           = '0;
-            election_metadata_ready   = 1'b0;
+            election_metadata_ready[i]   = 1'b0;
             
             if (replication_metadata_out_valid) begin
                 metadata_out_valid[i]   = 1'b1;
@@ -388,14 +391,15 @@ generate
             else if (!election_metadata_empty && !axis_engine_to_deparser_tvalid) begin
                 metadata_out_valid[i]   = 1'b1;
                 metadata_out[i]         = election_metadata_out_reg;
-                election_metadata_ready = 1'b1;
+                election_metadata_ready[i] = 1'b1;
             end
         end
 
         replication_engine #(
           .MAX_NODES                 (MAX_NODES),
           .DATA_WIDTH                (DATA_WIDTH),
-          .FIFO_DEPTH                (FIFO_DEPTH)
+          .FIFO_DEPTH                (FIFO_DEPTH),
+          .THREAD                    (i)
         ) replication_engine_inst    (
           .axis_clk                  (axis_aclk),
           .axis_rstn                 (axi_rstn),
@@ -440,11 +444,12 @@ generate
         );
 
         cuckoo_hash #(
-          .DATA_WIDTH                (512),
+          .DATA_WIDTH                (DATA_WIDTH),
           .BUCKET_SIZE               (BUCKET_SIZE),
           .NUM_FUNCTIONS             (NUM_HASHES),
           .MAX_KICKS                 (4),
-          .HASH_MATRIX               (HASH_MATRIX)
+          .HASH_MATRIX               (HASH_MATRIX),
+          .THREAD (i)
         ) cuckoo_hash_inst (
           .m_axi_araddr              (axi_araddr),
           .m_axi_arburst             (axi_arburst),
@@ -524,6 +529,8 @@ generate
           .rstn                      (axi_rstn)
         );
 
+        assign m_axi_mem_arid[i] = i;
+        assign m_axi_mem_awid[i] = i;
         prefilter_bd_wrapper i_pf(
             .M00_AXI_0_araddr		(m_axi_mem_araddr[i]),
             .M00_AXI_0_arburst	    (m_axi_mem_arburst[i]),	
@@ -720,5 +727,23 @@ generate
         );
     end
 endgenerate
+
+    `ifdef __simulation__
+        // Monitor AXI interfaces
+        always @(posedge axis_aclk) begin
+          for (int j = 0; j < N_THREADS; j++) begin
+            if (m_axi_mem_arvalid[j] && m_axi_mem_arready[j])
+              $display("[%t] PF OUT [HT: %d] AXI AR: addr=0x%h, len=0x%h, burst=0x%h", $time, j, m_axi_mem_araddr[j], m_axi_mem_arlen[j], m_axi_mem_arburst[j]);
+            if (m_axi_mem_rvalid[j] && m_axi_mem_rready[j])
+              $display("[%t] PF OUT [HT: %d] AXI R: data=0x%h, resp=0x%h", $time, j, m_axi_mem_rdata[j], m_axi_mem_rresp[j]);
+            if (m_axi_mem_awvalid[j] && m_axi_mem_awready[j])
+              $display("[%t] PF OUT [HT: %d] AXI AW: addr=0x%h, len=0x%h, burst=0x%h", $time, j, m_axi_mem_awaddr[j], m_axi_mem_awlen[j], m_axi_mem_awburst[j]);
+            if (m_axi_mem_wvalid[j] && m_axi_mem_wready[j])
+              $display("[%t] PF OUT [HT: %d] AXI W: data=0x%h, strb=0x%h", $time, j, m_axi_mem_wdata[j], m_axi_mem_wstrb[j]);
+            if (m_axi_mem_bvalid[j] && m_axi_mem_bready[j])
+              $display("[%t] PF OUT [HT: %d] AXI B: resp=0x%h", $time, j, m_axi_mem_bresp[j]);
+          end
+        end
+    `endif
 
 endmodule

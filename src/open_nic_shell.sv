@@ -41,6 +41,8 @@ module open_nic_shell #(
 `elsif __au55c__
   output                         hbm_cattrip,
   input                    [3:0] satellite_gpio,
+  input                          HBM_ref_clk_p   ,
+  input                          HBM_ref_clk_n   ,
 `elsif __au200__
   output                   [1:0] qsfp_resetl, 
   input                    [1:0] qsfp_modprsl,
@@ -547,7 +549,7 @@ module open_nic_shell #(
   assign user_rst_done[29:24] = {6{1'b1}};
 
 
-  assign sys_cfg_powerup_rstn = | powerup_rstn; 
+  assign sys_cfg_powerup_rstn =  | powerup_rstn; 
 
 `ifdef __au45n__
   assign qdma_pcie_rxp[23:0] = pcie_rxp;
@@ -923,7 +925,9 @@ module open_nic_shell #(
   end: qdma_if
   endgenerate
 
-  kvs_subsystem #(
+  logic REF_CLK, HBM_REF_CLK;
+
+  kvs_subsystem_mt #(
   ) kvs_subsystem_inst (
     .s_axil_awvalid                   (axil_box0_awvalid),
     .s_axil_awaddr                    (axil_box0_awaddr),
@@ -1060,7 +1064,7 @@ module open_nic_shell #(
     
     .axis_aclk                        (axis_aclk[0]),
     .axil_aclk                        (axil_aclk[0]),
-    .axi_rstn                         (sys_cfg_powerup_rstn),
+    .axi_rstn                         (pcie_rstn),
     .hbm_ref_clk                      (ref_clk_100mhz)
   );
 
@@ -1340,4 +1344,18 @@ module open_nic_shell #(
     .cmac_clk                        (cmac_clk)
   );
 
+  `ifdef __simulation__
+  initial begin
+    $monitor("powerup_rstn: %b, pcie_user_lnk_up: %b, pcie_phy_ready: %b,pcie_rstn: %b kvs_rstn: %b, box_250_rstn: %b, box322_rstn: %b, apb_complt: %b, rstn: %b \n",
+     powerup_rstn,
+     pcie_user_lnk_up,
+     pcie_phy_ready,
+     pcie_rstn[0],
+     sys_cfg_powerup_rstn,
+     box_250mhz_rstn, 
+     box_322mhz_rstn,
+     kvs_subsystem_inst.apb_complete_0,
+     kvs_subsystem_inst.rstn);
+  end
+  `endif
 endmodule: open_nic_shell

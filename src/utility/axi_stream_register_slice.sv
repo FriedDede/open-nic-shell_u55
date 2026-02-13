@@ -128,6 +128,7 @@ module axi_stream_register_slice #(
       end
     end
   end: forward_mode
+
   else begin: full_mode
     reg     [TDATA_W-1:0] axis_tdata[0:1];
     reg [(TDATA_W/8)-1:0] axis_tkeep[0:1];
@@ -224,3 +225,4 @@ module axi_stream_register_slice #(
   endgenerate
 
 endmodule: axi_stream_register_slice
+

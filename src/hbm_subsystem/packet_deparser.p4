@@ -204,7 +204,7 @@ control MyProcessing(inout headers hdr,
     hdr.ipv4.version = 4;
     hdr.ipv4.hdr_len = 5;
     hdr.ipv4.tos     = 0;
-    hdr.ipv4.length  = IP_HEADER_SIZE + UDP_HEADER_SIZE + REP_HEADER_SIZE + payload_length;
+    hdr.ipv4.length  = IP_HEADER_SIZE + UDP_HEADER_SIZE + KEY_SIZE + REP_HEADER_SIZE + payload_length;
     hdr.ipv4.id      = 0;
     hdr.ipv4.flags   = 0;
     hdr.ipv4.offset  = 0;
@@ -216,7 +216,7 @@ control MyProcessing(inout headers hdr,
 
     hdr.udp.src_port = REPLICATION_PORT;
     hdr.udp.dst_port = REPLICATION_PORT;
-    hdr.udp.length   = UDP_HEADER_SIZE + REP_HEADER_SIZE + payload_length;
+    hdr.udp.length   = UDP_HEADER_SIZE + REP_HEADER_SIZE + KEY_SIZE + payload_length;
     hdr.udp.checksum = 0;
 
     hdr.rep.opcode   = meta.opcode;

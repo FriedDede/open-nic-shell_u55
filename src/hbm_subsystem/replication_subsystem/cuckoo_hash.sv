@@ -8,7 +8,8 @@ module cuckoo_hash # (
   parameter int KEEP_WIDTH     = DATA_WIDTH / 8,
   parameter int HASH_WIDTH     = 34 - $clog2(BUCKET_SIZE),
   parameter int CMD_WIDTH      = 80,
-  parameter logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_FUNCTIONS][KEY_WIDTH-1:0] = '{default: '0}
+  parameter logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_FUNCTIONS][KEY_WIDTH-1:0] = '{default: '0},
+  parameter int          THREAD     = 0
 ) (
   input  logic clk,
   input  logic rstn,
@@ -620,4 +621,52 @@ module cuckoo_hash # (
       end
     end
   endgenerate
+
+  `ifdef __simulation__
+
+  // Monitor s_axis_dm interface (Data from DataMover)
+  always @(posedge clk) begin
+    if (s_axis_dm_tvalid && s_axis_dm_tready) begin
+      $display("[%t] CUCKOO [HT: %d] S_AXIS_DM: data=0x%h, keep=0x%h, last=%b", $time, THREAD, s_axis_dm_tdata, s_axis_dm_tkeep, s_axis_dm_tlast);
+    end
+  end
+
+  // Monitor m_axis_dm interface (Data to DataMover)
+  always @(posedge clk) begin
+    if (m_axis_dm_tvalid && m_axis_dm_tready) begin
+      $display("[%t] CUCKOO [HT: %d] M_AXIS_DM: data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_dm_tdata, m_axis_dm_tkeep, m_axis_dm_tlast);
+    end
+  end
+
+  // Monitor MM2S Command interface
+  always @(posedge clk) begin
+    if (m_axis_dm_mm2s_cmd_tvalid && m_axis_dm_mm2s_cmd_tready) begin
+      $display("[%t] CUCKOO [HT: %d] MM2S CMD: data=0x%h", $time, THREAD, m_axis_dm_mm2s_cmd_tdata);
+    end
+  end
+
+  // Monitor S2MM Command interface
+  always @(posedge clk) begin
+    if (m_axis_dm_s2mm_cmd_tvalid && m_axis_dm_s2mm_cmd_tready) begin
+      $display("[%t] CUCKOO [HT: %d] S2MM CMD: data=0x%h", $time, THREAD, m_axis_dm_s2mm_cmd_tdata);
+    end
+  end
+
+  // Monitor AXI interfaces
+  always @(posedge clk) begin
+    for (int j = 0; j < NUM_FUNCTIONS; j++) begin
+      if (m_axi_arvalid[j] && m_axi_arready[j])
+        $display("[%t] CUCKOO [HT: %d] AXI AR[%0d]: addr=0x%h, len=0x%h, burst=0x%h", $time, THREAD, j, m_axi_araddr[j], m_axi_arlen[j], m_axi_arburst[j]);
+      if (m_axi_rvalid[j] && m_axi_rready[j])
+        $display("[%t] CUCKOO [HT: %d] AXI R[%0d]: data=0x%h, resp=0x%h", $time, THREAD, j, m_axi_rdata[j], m_axi_rresp[j]);
+      if (m_axi_awvalid[j] && m_axi_awready[j])
+        $display("[%t] CUCKOO [HT: %d] AXI AW[%0d]: addr=0x%h, len=0x%h, burst=0x%h", $time, THREAD, j, m_axi_awaddr[j], m_axi_awlen[j], m_axi_awburst[j]);
+      if (m_axi_wvalid[j] && m_axi_wready[j])
+        $display("[%t] CUCKOO [HT: %d] AXI W[%0d]: data=0x%h, strb=0x%h", $time, THREAD, j, m_axi_wdata[j], m_axi_wstrb[j]);
+      if (m_axi_bvalid[j] && m_axi_bready[j])
+        $display("[%t] CUCKOO [HT: %d] AXI B[%0d]: resp=0x%h", $time, THREAD, j, m_axi_bresp[j]);
+    end
+  end
+
+`endif
 endmodule

@@ -4,7 +4,7 @@ package kvs_pkg;
 localparam DATA_WIDTH = 512;
 localparam BUCKET_SIZE = 1024;
 parameter int KEY_WIDTH = 64;
-parameter logic [31:0] VALID_TAG = {<< 8 {32'hF0CACC1A}};
+parameter logic [31:0] VALID_TAG = {32'hF0CACC1A};
 
 localparam NUM_HASHES    = 4;
 localparam ADDRESS_WIDTH = 34;  // 16 GB

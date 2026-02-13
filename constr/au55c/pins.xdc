@@ -47,6 +47,13 @@ if {$num_ports >= 2} {
 #    set_property IOSTANDARD  LVCMOS18 [get_ports qsfp_link_stat_ledy[1]]
 }
 
+# hbm clock external
+set_property PACKAGE_PIN BK44 [get_ports HBM_ref_clk_n]
+set_property PACKAGE_PIN BK43 [get_ports HBM_ref_clk_p]
+set_property IOSTANDARD LVDS [get_ports HBM_ref_clk_n]
+set_property IOSTANDARD LVDS [get_ports HBM_ref_clk_p]
+create_clock -name HBM_ref_clk -period 10 [get_ports HBM_ref_clk_p]
+
 # Fix the CATTRIP issue for custom flow
 # Read AR72926 for details.
 set_property -dict {PACKAGE_PIN BE45 IOSTANDARD LVCMOS18 PULLDOWN TRUE} [get_ports hbm_cattrip]

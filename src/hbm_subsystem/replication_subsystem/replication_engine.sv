@@ -6,7 +6,8 @@ module replication_engine #(
   parameter int          MAX_NODES  = 32,
   parameter int          DATA_WIDTH = 512,
   parameter int          KEEP_WIDTH = DATA_WIDTH / 8,
-  parameter int          FIFO_DEPTH = 16
+  parameter int          FIFO_DEPTH = 16,
+  parameter int          THREAD     = 0
 ) (
   input  logic axis_clk,
   input  logic axis_rstn,
@@ -162,6 +163,102 @@ logic               [47:0] table_mac;
 //   return 1'b0;
 // endfunction
 
+// --------------------------------------------------------------------------------------------------------------
+// OUTPUT REGISTERS
+// --------------------------------------------------------------------------------------------------------------
+
+logic                  m_axis_tvalid_reg;
+logic [DATA_WIDTH-1:0] m_axis_tdata_reg;
+logic [KEEP_WIDTH-1:0] m_axis_tkeep_reg;
+logic                  m_axis_tlast_reg;
+logic                  m_axis_tready_reg;
+
+st_metadata            metadata_out_reg;
+logic                  metadata_out_valid_reg;
+
+always_ff @(posedge axis_clk) begin
+    metadata_out <= metadata_out_reg;
+    metadata_out_valid <= metadata_out_valid_reg;
+end
+
+
+axi_stream_register_slice #(
+  .TDATA_W  (DATA_WIDTH),
+  .TID_W    (0),
+  .TDEST_W  (0),
+  .TUSER_W  (0),
+  .MODE     ("full")
+) axi_s_slice_out (
+  .s_axis_tvalid  (m_axis_tvalid_reg),
+  .s_axis_tdata   (m_axis_tdata_reg),
+  .s_axis_tkeep   (m_axis_tkeep_reg),
+  .s_axis_tlast   (m_axis_tlast_reg),
+  .s_axis_tid     (),
+  .s_axis_tdest   (),
+  .s_axis_tuser   (),
+  .s_axis_tready  (m_axis_tready_reg),
+
+  .m_axis_tvalid  (m_axis_tvalid),
+  .m_axis_tdata   (m_axis_tdata),
+  .m_axis_tkeep   (m_axis_tkeep),
+  .m_axis_tlast   (m_axis_tlast),
+  .m_axis_tid     (),
+  .m_axis_tdest   (),
+  .m_axis_tuser   (),
+  .m_axis_tready  (m_axis_tready),
+
+  .aclk     (axis_clk),
+  .aresetn  (axis_rstn)
+);
+
+logic                  m_axis_mem_tvalid_reg;
+logic [DATA_WIDTH-1:0] m_axis_mem_tdata_reg;
+logic [KEEP_WIDTH-1:0] m_axis_mem_tkeep_reg;
+logic                  m_axis_mem_tlast_reg;
+logic                  m_axis_mem_tready_reg;
+
+st_metadata            metadata_mem_out_reg;
+logic                  metadata_mem_out_valid_reg;
+
+always_ff @(posedge axis_clk) begin
+    metadata_mem_out <= metadata_mem_out_reg;
+    metadata_mem_out_valid <= metadata_mem_out_valid_reg;
+end
+
+axi_stream_register_slice #(
+  .TDATA_W  (DATA_WIDTH),
+  .TID_W    (0),
+  .TDEST_W  (0),
+  .TUSER_W  (0),
+  .MODE     ("full")
+) axi_s_slice_mem (
+
+  .s_axis_tvalid  (m_axis_mem_tvalid_reg),
+  .s_axis_tdata   (m_axis_mem_tdata_reg),
+  .s_axis_tkeep   (m_axis_mem_tkeep_reg),
+  .s_axis_tlast   (m_axis_mem_tlast_reg),
+  .s_axis_tid     (),
+  .s_axis_tdest   (),
+  .s_axis_tuser   (),
+  .s_axis_tready  (m_axis_mem_tready_reg),
+
+  .m_axis_tvalid  (m_axis_mem_tvalid),
+  .m_axis_tdata   (m_axis_mem_tdata ),
+  .m_axis_tkeep   (m_axis_mem_tkeep ),
+  .m_axis_tlast   (m_axis_mem_tlast ),
+  .m_axis_tid     (),
+  .m_axis_tdest   (),
+  .m_axis_tuser   (),
+  .m_axis_tready  (m_axis_mem_tready),
+
+  .aclk     (axis_clk),
+  .aresetn  (axis_rstn)
+);
+
+// --------------------------------------------------------------------------------------------------------------
+// REP ENGINE
+// --------------------------------------------------------------------------------------------------------------
+
 always_ff @(posedge axis_clk) begin
   if (!axis_rstn) begin
     net_state      <= ACCEPT_NET;
@@ -216,21 +313,21 @@ always_comb begin
   rep_wr_en              = 1'b0;
   ack_wr_en              = 1'b0;
 
-  m_axis_tvalid          = 0;
-  m_axis_tdata           = 0;
-  m_axis_tkeep           = 0;
-  m_axis_tlast           = 0;
+  m_axis_tvalid_reg          = 0;
+  m_axis_tdata_reg           = 0;
+  m_axis_tkeep_reg           = 0;
+  m_axis_tlast_reg           = 0;
 
-  metadata_out_valid     = 0;
-  metadata_out           = 0;
+  metadata_out_valid_reg     = 0;
+  metadata_out_reg           = 0;
 
-  m_axis_mem_tvalid      = 0;
-  m_axis_mem_tdata       = 0;
-  m_axis_mem_tkeep       = 0;
-  m_axis_mem_tlast       = 0;
+  m_axis_mem_tvalid_reg      = 0;
+  m_axis_mem_tdata_reg       = 0;
+  m_axis_mem_tkeep_reg       = 0;
+  m_axis_mem_tlast_reg       = 0;
 
-  metadata_mem_out_valid = 0;
-  metadata_mem_out       = 0;
+  metadata_mem_out_valid_reg = 0;
+  metadata_mem_out_reg       = 0;
 
   // Process incoming packets
   case (net_state)
@@ -238,30 +335,30 @@ always_comb begin
       if (!net_meta_empty) begin
         case (net_meta_out.opcode)
           READ: begin
-            m_axis_mem_tvalid = 1'b1;
-            m_axis_mem_tdata  = '0;
-            m_axis_mem_tkeep  = '0;
-            m_axis_mem_tlast  = 1'b1;
+            m_axis_mem_tvalid_reg = 1'b1;
+            m_axis_mem_tdata_reg  = '0;
+            m_axis_mem_tkeep_reg  = '0;
+            m_axis_mem_tlast_reg  = 1'b1;
 
-            metadata_mem_out_valid = 1'b1;
-            metadata_mem_out       = net_meta_out;
-            if (m_axis_mem_tready)
+            metadata_mem_out_valid_reg = 1'b1;
+            metadata_mem_out_reg       = net_meta_out;
+            if (m_axis_mem_tready_reg)
               net_meta_rd_en = 1'b1;
           end
           WRITE: begin
-            m_axis_mem_tvalid = !net_fifo_empty;
-            m_axis_mem_tdata  = net_fifo_out_tdata;
-            m_axis_mem_tkeep  = net_fifo_out_tkeep;
-            m_axis_mem_tlast  = net_fifo_out_tlast;
-            net_fifo_rd_en = m_axis_mem_tready;
-            m_axis_mem_tdata[31:0] = VALID_TAG;
-            if (m_axis_mem_tvalid) begin
+            m_axis_mem_tvalid_reg = !net_fifo_empty;
+            m_axis_mem_tdata_reg  = net_fifo_out_tdata;
+            m_axis_mem_tkeep_reg  = net_fifo_out_tkeep;
+            m_axis_mem_tlast_reg  = net_fifo_out_tlast;
+            net_fifo_rd_en = m_axis_mem_tready_reg;
+            m_axis_mem_tdata_reg[31:0] = VALID_TAG;
+            if (m_axis_mem_tvalid_reg) begin
               tag_written_next = 1'b1;
             end
 
-            metadata_mem_out_valid = 1'b1;
-            metadata_mem_out       = net_meta_out;
-            if (m_axis_mem_tready) begin
+            metadata_mem_out_valid_reg = 1'b1;
+            metadata_mem_out_reg       = net_meta_out;
+            if (m_axis_mem_tready_reg) begin
               if (is_leader) begin
                 net_state_next      = WRITE_REP;
                 rep_read_cnt_next   = 0;
@@ -305,11 +402,11 @@ always_comb begin
                 if (!out_busy[1] && ack_table_read.count + 1 == num_nodes - 1) begin
                   out_busy_next[0] = 1'b1;
 
-                  metadata_out_valid  = 1'b1;
-                  metadata_out        = ack_table_read.meta;
-                  metadata_out.opcode = WRITE_ACK_LEADER;
+                  metadata_out_valid_reg  = 1'b1;
+                  metadata_out_reg        = ack_table_read.meta;
+                  metadata_out_reg.opcode = WRITE_ACK_LEADER;
 
-                  if (m_axis_tready) begin
+                  if (m_axis_tready_reg) begin
                     ack_table_write.is_running = 1'b0;
                     ack_wr_en        = 1'b1;
                     out_busy_next[0] = 1'b0;
@@ -337,18 +434,18 @@ always_comb begin
       end
     end
     WRITE_MEM: begin
-      m_axis_mem_tvalid = !net_fifo_empty;
-      m_axis_mem_tdata  = net_fifo_out_tdata;
-      m_axis_mem_tkeep  = net_fifo_out_tkeep;
-      m_axis_mem_tlast  = net_fifo_out_tlast;
-      net_fifo_rd_en = m_axis_mem_tready;
+      m_axis_mem_tvalid_reg = !net_fifo_empty;
+      m_axis_mem_tdata_reg  = net_fifo_out_tdata;
+      m_axis_mem_tkeep_reg  = net_fifo_out_tkeep;
+      m_axis_mem_tlast_reg  = net_fifo_out_tlast;
+      net_fifo_rd_en = m_axis_mem_tready_reg;
       if (!tag_written_next) begin
-        m_axis_mem_tdata[31:0] = VALID_TAG;
-        if (m_axis_mem_tvalid && m_axis_mem_tready) begin
+        m_axis_mem_tdata_reg[31:0] = VALID_TAG;
+        if (m_axis_mem_tvalid_reg && m_axis_mem_tready_reg) begin
           tag_written_next = 1'b1;
         end
       end
-      if (m_axis_mem_tvalid && m_axis_mem_tready && m_axis_mem_tlast) begin
+      if (m_axis_mem_tvalid_reg && m_axis_mem_tready_reg && m_axis_mem_tlast_reg) begin
         tag_written_next = 1'b0;
         net_state_next   = ACCEPT_NET;
       end
@@ -359,17 +456,17 @@ always_comb begin
 
       // While writing to the first node, also move the write to the memory controller
       if (nodes_count == 0) begin
-        m_axis_mem_tvalid = !net_fifo_empty;
-        m_axis_mem_tdata  = net_fifo_out_tdata;
-        m_axis_mem_tkeep  = net_fifo_out_tkeep;
-        m_axis_mem_tlast  = net_fifo_out_tlast;
-        net_fifo_rd_en = m_axis_mem_tready;
+        m_axis_mem_tvalid_reg = !net_fifo_empty;
+        m_axis_mem_tdata_reg  = net_fifo_out_tdata;
+        m_axis_mem_tkeep_reg  = net_fifo_out_tkeep;
+        m_axis_mem_tlast_reg  = net_fifo_out_tlast;
+        net_fifo_rd_en = m_axis_mem_tready_reg;
         if (!tag_written) begin
-          m_axis_mem_tdata[31:0] = VALID_TAG;
+          m_axis_mem_tdata_reg[31:0] = VALID_TAG;
           tag_written_next = 1'b1;
         end
 
-        if (m_axis_mem_tvalid && m_axis_mem_tready) begin
+        if (m_axis_mem_tvalid_reg && m_axis_mem_tready_reg) begin
           replica_mem_write.tdata = net_fifo_out_tdata;
           replica_mem_write.tkeep = net_fifo_out_tkeep;
           replica_mem_write.tlast = net_fifo_out_tlast;
@@ -384,23 +481,23 @@ always_comb begin
       else begin
         if (!out_busy[1]) begin
           out_busy_next[0] = 1'b1;
-          m_axis_tvalid = 1'b1;
-          m_axis_tdata  = replica_mem_read.tdata;
-          m_axis_tkeep  = replica_mem_read.tkeep;
-          m_axis_tlast  = replica_mem_read.tlast;
+          m_axis_tvalid_reg = 1'b1;
+          m_axis_tdata_reg  = replica_mem_read.tdata;
+          m_axis_tkeep_reg  = replica_mem_read.tkeep;
+          m_axis_tlast_reg  = replica_mem_read.tlast;
 
           if (rep_read_cnt == 0) begin
-            metadata_out_valid = 1'b1;
-            metadata_out       = net_meta_out;
-            metadata_out.index = ack_id - 1;
-            metadata_out.ip    = table_ip;
-            metadata_out.mac   = table_mac;
+            metadata_out_valid_reg = 1'b1;
+            metadata_out_reg       = net_meta_out;
+            metadata_out_reg.index = ack_id - 1;
+            metadata_out_reg.ip    = table_ip;
+            metadata_out_reg.mac   = table_mac;
           end
 
-          if (m_axis_tready) begin
+          if (m_axis_tready_reg) begin
             rep_read_ptr      = rep_read_cnt + 1;
             rep_read_cnt_next = rep_read_cnt + 1;
-            if (m_axis_tlast) begin
+            if (m_axis_tlast_reg) begin
               rep_read_cnt_next  = 0;
               rep_read_ptr       = 0;
               metadata_sent_next = 1'b0;
@@ -431,27 +528,27 @@ always_comb begin
           out_busy_next[1] = 1'b1;
           case (mem_meta_out.opcode)
             READ: begin
-              m_axis_tvalid = !mem_fifo_empty;
-              m_axis_tdata  = mem_fifo_out_tdata;
-              m_axis_tkeep  = mem_fifo_out_tkeep;
-              m_axis_tlast  = mem_fifo_out_tlast;
-              mem_fifo_rd_en = m_axis_tready;
+              m_axis_tvalid_reg = !mem_fifo_empty;
+              m_axis_tdata_reg  = mem_fifo_out_tdata;
+              m_axis_tkeep_reg  = mem_fifo_out_tkeep;
+              m_axis_tlast_reg  = mem_fifo_out_tlast;
+              mem_fifo_rd_en = m_axis_tready_reg;
 
-              metadata_out_valid  = 1'b1;
-              metadata_out        = mem_meta_out;
-              metadata_out.opcode = READ_RESULT;
+              metadata_out_valid_reg  = 1'b1;
+              metadata_out_reg        = mem_meta_out;
+              metadata_out_reg.opcode = READ_RESULT;
 
-              if (m_axis_tready) begin
+              if (m_axis_tready_reg) begin
                 mem_state_next = READ_MEM;
                 mem_meta_rd_en = 1'b1;
               end
             end
             READ_NOT_FOUND: begin
-              metadata_out_valid  = 1'b1;
-              metadata_out        = mem_meta_out;
-              metadata_out.opcode = READ_NOT_FOUND;
+              metadata_out_valid_reg  = 1'b1;
+              metadata_out_reg        = mem_meta_out;
+              metadata_out_reg.opcode = READ_NOT_FOUND;
 
-              if (m_axis_tready) begin
+              if (m_axis_tready_reg) begin
                 out_busy_next[1] = 1'b0;
                 mem_meta_rd_en   = 1'b1;
                 mem_fifo_rd_en   = 1'b1;
@@ -459,11 +556,11 @@ always_comb begin
             end
             WRITE: begin
               if (!is_leader) begin
-                metadata_out_valid  = 1'b1;
-                metadata_out        = mem_meta_out;
-                metadata_out.opcode = WRITE_ACK;
+                metadata_out_valid_reg  = 1'b1;
+                metadata_out_reg        = mem_meta_out;
+                metadata_out_reg.opcode = WRITE_ACK;
 
-                if (m_axis_tready) begin
+                if (m_axis_tready_reg) begin
                   out_busy_next[1] = 1'b0;
                   mem_meta_rd_en   = 1'b1;
                   mem_fifo_rd_en   = 1'b1;
@@ -480,13 +577,13 @@ always_comb begin
         end
       end
       READ_MEM: begin
-        m_axis_tvalid = !mem_fifo_empty;
-        m_axis_tdata  = mem_fifo_out_tdata;
-        m_axis_tkeep  = mem_fifo_out_tkeep;
-        m_axis_tlast  = mem_fifo_out_tlast;
-        mem_fifo_rd_en = m_axis_tready;
+        m_axis_tvalid_reg = !mem_fifo_empty;
+        m_axis_tdata_reg  = mem_fifo_out_tdata;
+        m_axis_tkeep_reg  = mem_fifo_out_tkeep;
+        m_axis_tlast_reg  = mem_fifo_out_tlast;
+        mem_fifo_rd_en = m_axis_tready_reg;
 
-        if (m_axis_tvalid && m_axis_tready && m_axis_tlast) begin
+        if (m_axis_tvalid_reg && m_axis_tready_reg && m_axis_tlast_reg) begin
           out_busy_next[1] = 1'b0;
           mem_state_next = ACCEPT_MEM;
         end
@@ -677,4 +774,36 @@ xpm_fifo_sync #(
   .wr_rst_busy         ()
 );
 
+
+`ifdef __simulation__
+
+  // Monitor s_axis interface (Replication packet input)
+  always @(posedge axis_clk) begin
+    if (s_axis_tvalid && s_axis_tready) begin
+      $strobe("[%t] [HT: %d] REPL_ENGINE S_AXIS:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, s_axis_tdata, s_axis_tkeep, s_axis_tlast);
+    end
+  end
+
+  // Monitor m_axis interface (Replication packet output)
+  always @(posedge axis_clk) begin
+    if (m_axis_tvalid && m_axis_tready) begin
+      $strobe("[%t] [HT: %d] REPL_ENGINE M_AXIS:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_tdata, m_axis_tkeep, m_axis_tlast);
+    end
+  end
+
+  // Monitor s_axis_mem interface (Memory controller read)
+  always @(posedge axis_clk) begin
+    if (s_axis_mem_tvalid && s_axis_mem_tready) begin
+      $strobe("[%t] [HT: %d] REPL_ENGINE S_AXIS_MEM:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, s_axis_mem_tdata, s_axis_mem_tkeep, s_axis_mem_tlast);
+    end
+  end
+
+  // Monitor m_axis_mem interface (Memory controller write)
+  always @(posedge axis_clk) begin
+    if (m_axis_mem_tvalid && m_axis_mem_tready) begin
+      $strobe("[%t] [HT: %d] REPL_ENGINEs M_AXIS_MEM:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_mem_tdata, m_axis_mem_tkeep, m_axis_mem_tlast);
+    end
+  end
+
+`endif
 endmodule
