@@ -151,7 +151,7 @@ module cache_filter #(
         
     } state_t;
 
-    typedef enum logic [0] {
+    typedef enum logic [1:0] {
         RESET,
         READY
     } tag_ram_state_t;
@@ -178,13 +178,13 @@ module cache_filter #(
 
 
     // READ Address Decoding
-    assign read_req_offset = r_latched_addr[0 +: OFFSET_BITS];
-    assign read_req_index  = r_latched_addr[OFFSET_BITS +: INDEX_BITS];
-    assign read_req_tag    = r_latched_addr[ADDR_WIDTH-1 -: TAG_BITS];
+    assign read_req_offset = r_latched_addr[OFFSET_BITS -1 : 0];
+    assign read_req_index  = r_latched_addr[(OFFSET_BITS + INDEX_BITS -1) : OFFSET_BITS];
+    assign read_req_tag    = r_latched_addr[ADDR_WIDTH-1 : (OFFSET_BITS + INDEX_BITS) ];
     // WRITE Address Decoding
-    assign write_req_offset = w_latched_addr[0 +: OFFSET_BITS];
-    assign write_req_index  = w_latched_addr[OFFSET_BITS +: INDEX_BITS];
-    assign write_req_tag    = w_latched_addr[ADDR_WIDTH-1 -: TAG_BITS];
+    assign write_req_offset = w_latched_addr[OFFSET_BITS -1 : 0];
+    assign write_req_index  = w_latched_addr[(OFFSET_BITS + INDEX_BITS -1) : OFFSET_BITS];
+    assign write_req_tag    = w_latched_addr[ADDR_WIDTH-1 : (OFFSET_BITS + INDEX_BITS) ];
 
 // ---------------------------------------------------------
 // TAG RAM UPDATE & RESET LOGIC
@@ -204,7 +204,7 @@ module cache_filter #(
                     tag_ram[tag_ram_reset_i].dirty <= 0;
                     tag_ram[tag_ram_reset_i].tag   <= '0;
 
-                    if (tag_ram_reset_i == NUM_SETS[INDEX_BITS-1:0] - 1) begin
+                    if (tag_ram_reset_i == NUM_SETS - 1) begin
                         tag_ram_state <= READY;
                     end else begin
                         tag_ram_reset_i <= tag_ram_reset_i + 1;
@@ -332,9 +332,10 @@ module cache_filter #(
             end
 
             WAIT_MEM: begin
-                if (i_done_fetch)
+                if (i_done_fetch) begin
                     r_update_tag = 1;
                     r_next_state = ACCESS_CACHE;
+                end
             end
 
             ACCESS_CACHE: begin
@@ -457,9 +458,10 @@ module cache_filter #(
 
             ACCESS_CACHE: begin
                 // Wait for cache aw ready
-                if (m_cache_awready)
+                if (m_cache_awready) begin
                     w_tag_as_dirty = 1;
                     w_next_state = WAIT_CACHE;
+                end
             end
 
             WAIT_CACHE: begin
@@ -564,9 +566,13 @@ module cache_filter #(
         m_cache_wdata = s_axi_wdata;
         m_cache_wstrb = s_axi_wstrb;
         m_cache_wlast = s_axi_wlast;
+        m_cache_wvalid = 0;
+        s_axi_wready   = 0;
         // B
         s_axi_bid  = m_cache_bid;
         s_axi_bresp  = m_cache_bresp;
+        m_cache_bready = 0;
+        s_axi_bvalid   = 0;
             
         if (w_state == ACCESS_CACHE) begin
             // AW

@@ -927,7 +927,7 @@ module open_nic_shell #(
 
   logic REF_CLK, HBM_REF_CLK;
 
-  kvs_subsystem_mt #(
+  kvs_subsystem #(
   ) kvs_subsystem_inst (
     .s_axil_awvalid                   (axil_box0_awvalid),
     .s_axil_awaddr                    (axil_box0_awaddr),
@@ -1064,7 +1064,7 @@ module open_nic_shell #(
     
     .axis_aclk                        (axis_aclk[0]),
     .axil_aclk                        (axil_aclk[0]),
-    .axi_rstn                         (pcie_rstn),
+    .axi_rstn                         (pcie_rstn_int[0]),
     .hbm_ref_clk                      (ref_clk_100mhz)
   );
 

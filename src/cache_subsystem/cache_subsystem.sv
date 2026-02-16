@@ -96,6 +96,44 @@ module cache_subsystem
     output logic                    m_axi_cache_bready,
 
     // ---------------------------------------------------------
+    // MASTER - CACHE memory 
+    // ---------------------------------------------------------
+
+    output logic [ID_WIDTH-1:0]     m_axi_pm_to_cache_arid,
+    output logic [ADDR_WIDTH-1:0]   m_axi_pm_to_cache_araddr,
+    output logic [7:0]              m_axi_pm_to_cache_arlen,   // Fixed to 255 (256 beats)
+    output logic [2:0]              m_axi_pm_to_cache_arsize,  // Fixed to 6 (64 bytes)
+    output logic [1:0]              m_axi_pm_to_cache_arburst, // INCR type
+    output logic                    m_axi_pm_to_cache_arvalid,
+    input  logic                    m_axi_pm_to_cache_arready,
+
+    input logic [ID_WIDTH-1:0]      m_axi_pm_to_cache_rid,
+    input  logic [DATA_WIDTH-1:0]   m_axi_pm_to_cache_rdata,
+    input logic [1:0]               m_axi_pm_to_cache_rresp,
+    input  logic                    m_axi_pm_to_cache_rvalid,
+    output logic                    m_axi_pm_to_cache_rready,
+    input  logic                    m_axi_pm_to_cache_rlast,
+
+    output logic [ID_WIDTH-1:0]     m_axi_pm_to_cache_awid,
+    output logic [ADDR_WIDTH-1:0]   m_axi_pm_to_cache_awaddr,
+    output logic [7:0]              m_axi_pm_to_cache_awlen,
+    output logic [2:0]              m_axi_pm_to_cache_awsize,
+    output logic [1:0]              m_axi_pm_to_cache_awburst,
+    output logic                    m_axi_pm_to_cache_awvalid,
+    input  logic                    m_axi_pm_to_cache_awready,
+
+    output logic [DATA_WIDTH-1:0]   m_axi_pm_to_cache_wdata,
+    output logic                    m_axi_pm_to_cache_wstrb, // All 1s (Write full width)
+    output logic                    m_axi_pm_to_cache_wlast,
+    output logic                    m_axi_pm_to_cache_wvalid,
+    input  logic                    m_axi_pm_to_cache_wready,
+    
+    input logic [ID_WIDTH-1:0]      m_axi_pm_to_cache_bid,
+    input  logic [1:0]              m_axi_pm_to_cache_bresp,
+    input  logic                    m_axi_pm_to_cache_bvalid,
+    output logic                    m_axi_pm_to_cache_bready,
+
+    // ---------------------------------------------------------
     // MASTER - BACKING memory
     // ---------------------------------------------------------
 
@@ -161,36 +199,37 @@ AXI_BUS #(
     .AXI_USER_WIDTH(0)
 ) m_cf_to_cache ();
 
-AXI_BUS #(
-    .AXI_ADDR_WIDTH(ADDR_WIDTH),
-    .AXI_DATA_WIDTH(DATA_WIDTH),
-    .AXI_ID_WIDTH(ID_WIDTH + 1),
-    .AXI_USER_WIDTH(0)
-) mux_to_cache ();
+//  AXI_BUS #(
+//      .AXI_ADDR_WIDTH(ADDR_WIDTH),
+//      .AXI_DATA_WIDTH(DATA_WIDTH),
+//      .AXI_ID_WIDTH(ID_WIDTH + 1),
+//      .AXI_USER_WIDTH(0)
+//  ) mux_to_cache ();
+//  
+//  axi_mux_intf #(
+//      .SLV_AXI_ID_WIDTH(ID_WIDTH),
+//      .MST_AXI_ID_WIDTH(ID_WIDTH + 2),
+//      .AXI_ADDR_WIDTH(ADDR_WIDTH),
+//      .AXI_DATA_WIDTH(DATA_WIDTH),
+//      .AXI_USER_WIDTH(0),
+//      .NO_SLV_PORTS(3),
+//      .MAX_W_TRANS(1),
+//      .FALL_THROUGH(0),
+//      .SPILL_AW (0),
+//      .SPILL_W  (0),
+//      .SPILL_B  (0),
+//      .SPILL_AR (0),
+//      .SPILL_R  (0)
+//  ) axi_mux_intf_instance (
+//      .clk_i(aclk),
+//      .rst_ni(aresetn),
+//      .test_i(0),
+//      .slv({m_pm_to_cache,m_cf_to_cache}),
+//      .mst(mux_to_cache)
+//  );
 
-axi_mux_intf #(
-    .SLV_AXI_ID_WIDTH(ID_WIDTH),
-    .MST_AXI_ID_WIDTH(ID_WIDTH + 2),
-    .AXI_ADDR_WIDTH(ADDR_WIDTH),
-    .AXI_DATA_WIDTH(DATA_WIDTH),
-    .AXI_USER_WIDTH(0),
-    .NO_SLV_PORTS(3),
-    .MAX_W_TRANS(1),
-    .FALL_THROUGH(0),
-    .SPILL_AW (0),
-    .SPILL_W  (0),
-    .SPILL_B  (0),
-    .SPILL_AR (0),
-    .SPILL_R  (0)
-) axi_mux_intf_instance (
-    .clk_i(aclk),
-    .rst_ni(aresetn),
-    .test_i(0),
-    .slv({m_pm_to_cache,m_cf_to_cache}),
-    .mst(mux_to_cache)
-);
-
-`AXI_ASSIGN_BUS_MASTER_TO_FLAT(cache, mux_to_cache)
+`AXI_ASSIGN_BUS_MASTER_TO_FLAT(cache, m_cf_to_cache)
+`AXI_ASSIGN_BUS_MASTER_TO_FLAT(pm_to_cache, m_pm_to_cache)
 
 cache_filter #(
     .ADDR_WIDTH(ADDR_WIDTH),
@@ -321,7 +360,7 @@ page_mover #(
     .m_dst_awlen    (m_pm_to_cache.aw_len),
     .m_dst_awsize   (m_pm_to_cache.aw_size),
     .m_dst_awburst  (m_pm_to_cache.aw_burst),
-    .m_dsr_awvalid  (m_pm_to_cache.aw_valid),
+    .m_dst_awvalid  (m_pm_to_cache.aw_valid),
     .m_dst_awready  (m_pm_to_cache.aw_ready),
 
     .m_dst_wdata    (m_pm_to_cache.w_data),
@@ -376,7 +415,7 @@ page_mover #(
     .m_dst_awlen    (m_axi_mem_awlen),
     .m_dst_awsize   (m_axi_mem_awsize),
     .m_dst_awburst  (m_axi_mem_awburst),
-    .m_dsr_awvalid  (m_axi_mem_awvalid),
+    .m_dst_awvalid  (m_axi_mem_awvalid),
     .m_dst_awready  (m_axi_mem_awready),
 
     .m_dst_wdata    (m_axi_mem_wdata),
@@ -392,5 +431,10 @@ page_mover #(
 
 assign m_pm_to_cache.ar_id = 4'b0001;
 assign m_axi_mem_awid      = 4'b0001;
+
+initial begin
+    assert (PAGE_SIZE == (1 << OFFSET_BITS))
+    else $fatal(1, "PAGE_SIZE (%0d) must be equal to 2**OFFSET_BITS (2**%0d)", PAGE_SIZE, OFFSET_BITS);
+end
 
 endmodule

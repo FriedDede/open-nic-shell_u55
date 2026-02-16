@@ -1,9 +1,20 @@
-package cache_ss_pkg;
+
+`include "axi_typedef.svh"
+
+
+package cache_ss_pkg; 
+
+    // cache size:
+    // 2MB pages = 21 bit offset
+    localparam OFFSET_BITS = 21;
+    // 8192 pages (16GB cache)
+    localparam int unsigned cache_size = 4*1024*1024*1024;
+    localparam INDEX_BITS = $clog2(cache_size) - OFFSET_BITS; 
 
     // AXI to mem
 
     localparam int unsigned AddrWidth = 34;
-    localparam int unsigned DataWidth = 64;
+    localparam int unsigned DataWidth = 512;
     localparam int unsigned IdWidth   = 4;
     localparam int unsigned UserWidth = 0;
 

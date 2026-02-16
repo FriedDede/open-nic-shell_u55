@@ -40,11 +40,11 @@ module page_mover #(
     output logic [7:0]              m_dst_awlen,
     output logic [2:0]              m_dst_awsize,
     output logic [1:0]              m_dst_awburst,
-    output logic                    m_dsr_awvalid,
+    output logic                    m_dst_awvalid,
     input  logic                    m_dst_awready,
 
     output logic [DATA_WIDTH-1:0]   m_dst_wdata,
-    output logic                    m_dst_wstrb, // All 1s (Write full width)
+    output logic [(DATA_WIDTH/8)-1:0]   m_dst_wstrb, // All 1s (Write full width)
     output logic                    m_dst_wlast,
     output logic                    m_dst_wvalid,
     input  logic                    m_dst_wready,
@@ -125,7 +125,7 @@ module page_mover #(
     assign m_dst_awlen   = BURST_LEN - 1;
     assign m_dst_awsize  = 3'b110;
     assign m_dst_awburst = 2'b01;
-    assign m_dst_wstrb   = 1'b1;          // Simplified: assume full width valid
+    assign m_dst_wstrb   = '1;          // Simplified: assume full width valid
 
     // Address Outputs
     assign m_src_araddr    = current_src_addr;
@@ -155,7 +155,7 @@ module page_mover #(
             current_src_addr    <= 0;
             current_dst_addr    <= 0;
             m_src_arvalid       <= 0;
-            m_dsr_awvalid       <= 0;
+            m_dst_awvalid       <= 0;
             m_dst_bready        <= 0;
             o_done              <= 0;
             o_idle              <= 1;
@@ -169,24 +169,22 @@ module page_mover #(
                         current_dst_addr    <= i_dst_addr;
                         burst_cnt           <= 0;
                         o_idle              <= 0;
+
+                        m_src_arvalid   <= 1;
+                        m_dst_awvalid   <= 1;
+
                         state               <= ADDR_PHASE;
                     end
                 end
 
                 ADDR_PHASE: begin
-                    // Issue Read and Write Addresses simultaneously
-                    // Simple logic: Assert both until accepted
-                    if (!m_src_arvalid && !m_dsr_awvalid) begin
-                        m_src_arvalid   <= 1;
-                        m_dsr_awvalid   <= 1;
-                    end
                     
                     if (m_src_arready)   m_src_arvalid   <= 0;
-                    if (m_dst_awready)   m_dsr_awvalid <= 0;
+                    if (m_dst_awready)   m_dst_awvalid <= 0;
 
                     // Move to data phase once both addresses accepted
                     if ((m_src_arready || !m_src_arvalid) && 
-                        (m_dst_awready || !m_dsr_awvalid)) begin
+                        (m_dst_awready || !m_dst_awvalid)) begin
                         beat_cnt        <= 0;
                         state           <= DATA_PHASE;
                     end
@@ -217,6 +215,9 @@ module page_mover #(
                             burst_cnt    <= burst_cnt + 1;
                             current_src_addr <= current_src_addr + BYTES_PER_BURST;
                             current_dst_addr <= current_dst_addr + BYTES_PER_BURST;
+
+                            m_src_arvalid   <= 1;
+                            m_dst_awvalid   <= 1;
                             state        <= ADDR_PHASE;
                         end
                     end
