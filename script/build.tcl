@@ -314,8 +314,18 @@ dict for {ip ip_dir} $ip_dict {
 
 # Read the HBM block diagram
 source ${src_dir}/hbm_subsystem/hbm_bd.tcl
-make_wrapper -files [get_files ${top_build_dir}/open_nic_hbm.srcs/sources_1/bd/hbm_bd/hbm_bd.bd] -top
-add_files -norecurse ${top_build_dir}/open_nic_hbm.gen/sources_1/bd/hbm_bd/hdl/hbm_bd_wrapper.v
+make_wrapper -files [get_files ${top_build_dir}/${prj_name}.srcs/sources_1/bd/hbm_bd/hbm_bd.bd] -top
+add_files -norecurse ${top_build_dir}/${prj_name}.gen/sources_1/bd/hbm_bd/hdl/hbm_bd_wrapper.v
+
+# Read the HBM block diagram
+source ${src_dir}/hbm_subsystem/prefilter.tcl
+make_wrapper -files [get_files ${top_build_dir}/${prj_name}.srcs/sources_1/bd/prefilter_bd/prefilter_bd.bd] -top
+add_files -norecurse ${top_build_dir}/${prj_name}.gen/sources_1/bd/prefilter_bd/hdl/prefilter_bd_wrapper.v
+
+# Read the HBM block diagram
+source ${src_dir}/hbm_subsystem/hbm_multichannel.tcl
+make_wrapper -files [get_files ${top_build_dir}/${prj_name}.srcs/sources_1/bd/hbm_interface/hbm_interface.bd] -top
+add_files -norecurse ${top_build_dir}/${prj_name}.gen/sources_1/bd/hbm_interface/hdl/hbm_interface_wrapper.v
 
 # Read user plugin files
 set include_dirs [get_property include_dirs [current_fileset]]

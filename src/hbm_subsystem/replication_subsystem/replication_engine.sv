@@ -776,32 +776,60 @@ xpm_fifo_sync #(
 
 
 `ifdef __simulation__
+  integer log_fd;
 
-  // Monitor s_axis interface (Replication packet input)
-  always @(posedge axis_clk) begin
-    if (s_axis_tvalid && s_axis_tready) begin
-      $strobe("[%t] [HT: %d] REPL_ENGINE S_AXIS:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, s_axis_tdata, s_axis_tkeep, s_axis_tlast);
-    end
+  initial begin
+    string filename;
+    $sformat(filename, "replication_engine_%0d.log", THREAD);
+    log_fd = $fopen(filename, "w");
+
+    $fmonitor(log_fd, "[%t] [HT: %d] REPL_ENGINE METADATA_MEM_OUT_REG:\n opcode=%d, index=%d net_state=%p, mem_state=%p, ack_id=%d, rep_read_cnt=%d, rep_write_ptr=%d, nodes_count=%d, metadata_sent=%b, out_busy=%b, memory_delay=%d, tag_written=%b, table_index=%d", 
+                $time, 
+                THREAD, 
+                metadata_mem_out_reg.opcode, 
+                metadata_mem_out_reg.index, 
+                net_state, 
+                mem_state, 
+                ack_id, 
+                rep_read_cnt, 
+                rep_write_ptr, 
+                nodes_count, 
+                metadata_sent, 
+                out_busy, 
+                memory_delay, 
+                tag_written, 
+                table_index);
   end
 
-  // Monitor m_axis interface (Replication packet output)
-  always @(posedge axis_clk) begin
-    if (m_axis_tvalid && m_axis_tready) begin
-      $strobe("[%t] [HT: %d] REPL_ENGINE M_AXIS:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_tdata, m_axis_tkeep, m_axis_tlast);
-    end
-  end
-
-  // Monitor s_axis_mem interface (Memory controller read)
-  always @(posedge axis_clk) begin
-    if (s_axis_mem_tvalid && s_axis_mem_tready) begin
-      $strobe("[%t] [HT: %d] REPL_ENGINE S_AXIS_MEM:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, s_axis_mem_tdata, s_axis_mem_tkeep, s_axis_mem_tlast);
-    end
+  final begin
+    if (log_fd) $fclose(log_fd);
   end
 
   // Monitor m_axis_mem interface (Memory controller write)
   always @(posedge axis_clk) begin
     if (m_axis_mem_tvalid && m_axis_mem_tready) begin
-      $strobe("[%t] [HT: %d] REPL_ENGINEs M_AXIS_MEM:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_mem_tdata, m_axis_mem_tkeep, m_axis_mem_tlast);
+      $display("[%t] [HT: %d] REPL_ENGINEs M_AXIS_MEM:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_mem_tdata, m_axis_mem_tkeep, m_axis_mem_tlast);
+    end
+  end
+
+  // Monitor internal registered signals (Replication packet output)
+  always @(posedge axis_clk) begin
+    if (m_axis_tvalid_reg && m_axis_tready_reg) begin
+      $display("[%t] [HT: %d] REPL_ENGINE M_AXIS_REG:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_tdata_reg, m_axis_tkeep_reg, m_axis_tlast_reg);
+    end
+  end
+
+  // Monitor internal registered signals (Memory controller write)
+  always @(posedge axis_clk) begin
+    if (m_axis_mem_tvalid_reg && m_axis_mem_tready_reg) begin
+      $display("[%t] [HT: %d] REPL_ENGINE M_AXIS_MEM_REG:\n data=0x%h, keep=0x%h, last=%b", $time, THREAD, m_axis_mem_tdata_reg, m_axis_mem_tkeep_reg, m_axis_mem_tlast_reg);
+    end
+  end
+
+  // Monitor metadata output (Replication)
+  always @(posedge axis_clk) begin
+    if (metadata_out_valid_reg) begin
+      $display("[%t] [HT: %d] REPL_ENGINE METADATA_OUT_REG:\n opcode=%d, IP=%h, MAC=%h", $time, THREAD, metadata_out_reg.opcode, metadata_out_reg.ip, metadata_out_reg.mac);
     end
   end
 

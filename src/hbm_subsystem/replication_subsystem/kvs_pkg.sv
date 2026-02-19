@@ -19,8 +19,14 @@ localparam logic [TIMER_WIDTH-1:0] TAP_MASK = 30'h60000000;
 // Replication parameters
 localparam  N_THREADS = 4;
 
-localparam logic [31:0] NODE_IP         = 32'hC0643300;
-localparam logic [47:0] NODE_MAC        = 48'h020A35070000;
+// TODO: make the ip and mac settable from software
+// node 0
+//localparam logic [31:0] NODE_IP         = 32'hC0643300;
+//localparam logic [47:0] NODE_MAC        = 48'h020A35070000;
+// node 1
+localparam logic [31:0] NODE_IP         = 32'hC0643301;
+localparam logic [47:0] NODE_MAC        = 48'h020A35070001;
+
 localparam int          MAX_NODES       = 32;
 
 localparam logic [63:0]            BASE_HOST_MEM   = 64'h0000000400000000; // starts at 16GB by default

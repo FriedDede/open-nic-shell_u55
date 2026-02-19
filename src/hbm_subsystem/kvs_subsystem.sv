@@ -701,41 +701,41 @@ AXI_BUS #(
 
 
 prefilter_bd_wrapper i_pf(
-    .M00_AXI_0_araddr		(axi_mm_pf_to_cache.ar_addr),
-    .M00_AXI_0_arburst	(axi_mm_pf_to_cache.ar_burst),	
-    .M00_AXI_0_arcache	(axi_mm_pf_to_cache.ar_cache),	
-    .M00_AXI_0_arlen 		(axi_mm_pf_to_cache.ar_len),
-    .M00_AXI_0_arlock		(axi_mm_pf_to_cache.ar_lock),
-    .M00_AXI_0_arprot		(axi_mm_pf_to_cache.ar_prot),
-    .M00_AXI_0_arqos 		(axi_mm_pf_to_cache.ar_qos),
-    .M00_AXI_0_arready	(axi_mm_pf_to_cache.ar_ready),	
-    .M00_AXI_0_arsize		(axi_mm_pf_to_cache.ar_size),
-    .M00_AXI_0_aruser		(axi_mm_pf_to_cache.ar_user),
-    .M00_AXI_0_arvalid	(axi_mm_pf_to_cache.ar_valid),	
-    .M00_AXI_0_awaddr		(axi_mm_pf_to_cache.aw_addr),
-    .M00_AXI_0_awburst	(axi_mm_pf_to_cache.aw_burst),	
-    .M00_AXI_0_awcache	(axi_mm_pf_to_cache.aw_cache),	
-    .M00_AXI_0_awlen 		(axi_mm_pf_to_cache.aw_len),
-    .M00_AXI_0_awlock		(axi_mm_pf_to_cache.aw_lock),
-    .M00_AXI_0_awprot		(axi_mm_pf_to_cache.aw_prot),
-    .M00_AXI_0_awqos 		(axi_mm_pf_to_cache.aw_qos),
-    .M00_AXI_0_awready	(axi_mm_pf_to_cache.aw_ready),	
-    .M00_AXI_0_awsize		(axi_mm_pf_to_cache.aw_size),
-    .M00_AXI_0_awuser		(axi_mm_pf_to_cache.aw_user),
-    .M00_AXI_0_awvalid	(axi_mm_pf_to_cache.aw_valid),	
-    .M00_AXI_0_bready		(axi_mm_pf_to_cache.b_ready),
-    .M00_AXI_0_bresp 		(axi_mm_pf_to_cache.b_resp),
-    .M00_AXI_0_bvalid		(axi_mm_pf_to_cache.b_valid),
-    .M00_AXI_0_rdata 		(axi_mm_pf_to_cache.r_data),
-    .M00_AXI_0_rlast 		(axi_mm_pf_to_cache.r_last),
-    .M00_AXI_0_rready		(axi_mm_pf_to_cache.r_ready),
-    .M00_AXI_0_rresp 		(axi_mm_pf_to_cache.r_resp),
-    .M00_AXI_0_rvalid		(axi_mm_pf_to_cache.r_valid),
-    .M00_AXI_0_wdata 		(axi_mm_pf_to_cache.w_data),
-    .M00_AXI_0_wlast 		(axi_mm_pf_to_cache.w_last),
-    .M00_AXI_0_wready		(axi_mm_pf_to_cache.w_ready),
-    .M00_AXI_0_wstrb 		(axi_mm_pf_to_cache.w_strb),
-    .M00_AXI_0_wvalid		(axi_mm_pf_to_cache.w_valid),
+    .M00_AXI_0_araddr		(axi_mm_cache_to_hbm[0].ar_addr),
+    .M00_AXI_0_arburst	(axi_mm_cache_to_hbm[0].ar_burst),	
+    .M00_AXI_0_arcache	(axi_mm_cache_to_hbm[0].ar_cache),	
+    .M00_AXI_0_arlen 		(axi_mm_cache_to_hbm[0].ar_len),
+    .M00_AXI_0_arlock		(axi_mm_cache_to_hbm[0].ar_lock),
+    .M00_AXI_0_arprot		(axi_mm_cache_to_hbm[0].ar_prot),
+    .M00_AXI_0_arqos 		(axi_mm_cache_to_hbm[0].ar_qos),
+    .M00_AXI_0_arready	(axi_mm_cache_to_hbm[0].ar_ready),	
+    .M00_AXI_0_arsize		(axi_mm_cache_to_hbm[0].ar_size),
+    .M00_AXI_0_aruser		(axi_mm_cache_to_hbm[0].ar_user),
+    .M00_AXI_0_arvalid	(axi_mm_cache_to_hbm[0].ar_valid),	
+    .M00_AXI_0_awaddr		(axi_mm_cache_to_hbm[0].aw_addr),
+    .M00_AXI_0_awburst	(axi_mm_cache_to_hbm[0].aw_burst),	
+    .M00_AXI_0_awcache	(axi_mm_cache_to_hbm[0].aw_cache),	
+    .M00_AXI_0_awlen 		(axi_mm_cache_to_hbm[0].aw_len),
+    .M00_AXI_0_awlock		(axi_mm_cache_to_hbm[0].aw_lock),
+    .M00_AXI_0_awprot		(axi_mm_cache_to_hbm[0].aw_prot),
+    .M00_AXI_0_awqos 		(axi_mm_cache_to_hbm[0].aw_qos),
+    .M00_AXI_0_awready	(axi_mm_cache_to_hbm[0].aw_ready),	
+    .M00_AXI_0_awsize		(axi_mm_cache_to_hbm[0].aw_size),
+    .M00_AXI_0_awuser		(axi_mm_cache_to_hbm[0].aw_user),
+    .M00_AXI_0_awvalid	(axi_mm_cache_to_hbm[0].aw_valid),	
+    .M00_AXI_0_bready		(axi_mm_cache_to_hbm[0].b_ready),
+    .M00_AXI_0_bresp 		(axi_mm_cache_to_hbm[0].b_resp),
+    .M00_AXI_0_bvalid		(axi_mm_cache_to_hbm[0].b_valid),
+    .M00_AXI_0_rdata 		(axi_mm_cache_to_hbm[0].r_data),
+    .M00_AXI_0_rlast 		(axi_mm_cache_to_hbm[0].r_last),
+    .M00_AXI_0_rready		(axi_mm_cache_to_hbm[0].r_ready),
+    .M00_AXI_0_rresp 		(axi_mm_cache_to_hbm[0].r_resp),
+    .M00_AXI_0_rvalid		(axi_mm_cache_to_hbm[0].r_valid),
+    .M00_AXI_0_wdata 		(axi_mm_cache_to_hbm[0].w_data),
+    .M00_AXI_0_wlast 		(axi_mm_cache_to_hbm[0].w_last),
+    .M00_AXI_0_wready		(axi_mm_cache_to_hbm[0].w_ready),
+    .M00_AXI_0_wstrb 		(axi_mm_cache_to_hbm[0].w_strb),
+    .M00_AXI_0_wvalid		(axi_mm_cache_to_hbm[0].w_valid),
 
     .axi_clk(axis_aclk),
     .axi_resetn (rstn),
@@ -898,6 +898,7 @@ prefilter_bd_wrapper i_pf(
   .s_axi_3_wvalid                  (axi_wvalid[3])
 );
 
+/*
 cache_subsystem #(
   .ADDR_WIDTH   (cache_ss_pkg::AddrWidth),
   .DATA_WIDTH   (cache_ss_pkg::DataWidth),
@@ -1030,6 +1031,8 @@ cache_subsystem #(
   .m_axi_mem_bvalid       (m_axi_sys_mem_bvalid),
   .m_axi_mem_bready       (m_axi_sys_mem_bready)
 );
+
+*/
 
 hbm_interface_wrapper i_hbm(
     

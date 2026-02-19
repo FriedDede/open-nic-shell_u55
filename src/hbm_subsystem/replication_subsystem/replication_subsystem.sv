@@ -168,9 +168,12 @@ end
 st_metadata election_metadata_out_reg;
 logic       election_metadata_ready;
 logic       election_metadata_empty;
+
+/*
 st_metadata replication_metadata_out_reg;
 logic       replication_metadata_ready;
 logic       replication_metadata_empty;
+*/
 
 // Arbiter between replication and leader election with priority to the former 
 always_comb begin

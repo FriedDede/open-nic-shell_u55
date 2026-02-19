@@ -129,7 +129,7 @@ module cache_filter #(
     } cache_tag_t;
 
     // Block RAM inference for Tags
-    cache_tag_t tag_ram [NUM_SETS-1:0];
+    (* ram_style="block" *) cache_tag_t tag_ram [NUM_SETS-1:0];
 
     
     logic [OFFSET_BITS-1:0] read_req_offset , write_req_offset;
