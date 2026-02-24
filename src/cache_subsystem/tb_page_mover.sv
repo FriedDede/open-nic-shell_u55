@@ -5,11 +5,11 @@ module tb_page_mover();
     // ---------------------------------------------------------
     // Parameters (Scaled down for simulation speed)
     // ---------------------------------------------------------
-    parameter ADDR_WIDTH = 40;
+    parameter ADDR_WIDTH = 34;
     parameter DATA_WIDTH = 512;
-    parameter MAX_BURST_LEN = 256;
+    parameter MAX_BURST_LEN = 16;
     // Scale down: 4 bursts of 256 beats (64 bytes/beat) = 64KB page instead of 2MB
-    parameter PAGE_SIZE = 4 * MAX_BURST_LEN * (DATA_WIDTH/8); 
+    parameter PAGE_SIZE = 2 * 1024 * 1024; 
 
     // ---------------------------------------------------------
     // Signals
@@ -62,7 +62,6 @@ module tb_page_mover();
     page_mover #(
         .ADDR_WIDTH(ADDR_WIDTH),
         .DATA_WIDTH(DATA_WIDTH),
-        .MAX_BURST_LEN(MAX_BURST_LEN),
         .PAGE_SIZE(PAGE_SIZE)
     ) dut (
         .aclk(aclk), 
@@ -116,6 +115,7 @@ module tb_page_mover();
             m_src_arready <= 1; // Always ready for address
 
             if (m_src_arvalid && m_src_arready) begin
+                $display("Fetching addr:  0x%0h...", m_src_araddr);
                 m_src_arready <= 0;
                 
                 // Serve burst
@@ -147,6 +147,10 @@ module tb_page_mover();
             @(posedge aclk);
             m_dst_awready <= 1;
             m_dst_wready  <= 1; // Can add random stalls here to test FIFO
+
+            if (m_dst_awvalid) begin
+                 $display("Caching to addr:  0x%0h...", m_dst_awaddr);
+            end
 
             if (m_dst_wvalid && m_dst_wready && m_dst_wlast) begin
                 // End of burst, send response

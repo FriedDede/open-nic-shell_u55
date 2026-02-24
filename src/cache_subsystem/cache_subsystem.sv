@@ -12,7 +12,7 @@ module cache_subsystem
     parameter OFFSET_BITS   = 21,   // 2 MB cache line
     parameter INDEX_BITS    = 13,   // 16GB HBM
 
-    parameter MAX_BURST_LEN = 256,
+    parameter MAX_BURST_LEN = 16,
     parameter PAGE_SIZE     = 2*1024*1024
 )
 (
@@ -329,10 +329,9 @@ cache_filter #(
 // READ  DIRECTION: MEM
 
 page_mover #(
-    .ADDR_WIDTH(ADDR_WIDTH),
-    .DATA_WIDTH(DATA_WIDTH),
-    .MAX_BURST_LEN(MAX_BURST_LEN),
-    .PAGE_SIZE(PAGE_SIZE)
+    .ADDR_WIDTH     (ADDR_WIDTH),
+    .DATA_WIDTH     (DATA_WIDTH),
+    .PAGE_SIZE      (PAGE_SIZE)
 ) i_pm_fetch (
     .aclk(aclk),
     .aresetn(aresetn),
@@ -385,7 +384,6 @@ assign m_axi_mem_rid = 4'b0010;
 page_mover #(
     .ADDR_WIDTH(ADDR_WIDTH),
     .DATA_WIDTH(DATA_WIDTH),
-    .MAX_BURST_LEN(MAX_BURST_LEN),
     .PAGE_SIZE(PAGE_SIZE)
 ) i_pm_evict (
 

@@ -369,7 +369,6 @@ proc create_root_design { parentCell } {
   set aresetn_0 [ create_bd_port -dir I -type rst aresetn_0 ]
   set apb_complete_0_0 [ create_bd_port -dir O apb_complete_0_0 ]
   set apb_complete_1_0 [ create_bd_port -dir O apb_complete_1_0 ]
-  set apb_reset [ create_bd_port -dir I -type rst apb_reset ]
 
   # Create instance: hbm_0, and set properties
   set hbm_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:hbm:1.0 hbm_0 ]
@@ -532,16 +531,8 @@ proc create_root_design { parentCell } {
   set system_ila_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 system_ila_0 ]
   set_property -dict [list \
     CONFIG.C_MON_TYPE {INTERFACE} \
-    CONFIG.C_NUM_MONITOR_SLOTS {1} \
+    CONFIG.C_NUM_MONITOR_SLOTS {2} \
   ] $system_ila_0
-
-
-  # Create instance: system_ila_1, and set properties
-  set system_ila_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 system_ila_1 ]
-  set_property -dict [list \
-    CONFIG.C_MON_TYPE {NATIVE} \
-    CONFIG.C_NUM_OF_PROBES {10} \
-  ] $system_ila_1
 
 
   # Create instance: clk_wiz_0, and set properties
@@ -550,12 +541,12 @@ proc create_root_design { parentCell } {
     CONFIG.AUTO_PRIMITIVE {PLL} \
     CONFIG.CLKIN1_JITTER_PS {100.0} \
     CONFIG.CLKOUT1_DRIVES {Buffer} \
-    CONFIG.CLKOUT1_JITTER {137.681} \
-    CONFIG.CLKOUT1_PHASE_ERROR {105.461} \
+    CONFIG.CLKOUT1_JITTER {130.958} \
+    CONFIG.CLKOUT1_PHASE_ERROR {98.575} \
     CONFIG.CLKOUT2_DRIVES {Buffer} \
-    CONFIG.CLKOUT2_JITTER {103.830} \
-    CONFIG.CLKOUT2_PHASE_ERROR {105.461} \
-    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {450.000} \
+    CONFIG.CLKOUT2_JITTER {110.209} \
+    CONFIG.CLKOUT2_PHASE_ERROR {98.575} \
+    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {250.000} \
     CONFIG.CLKOUT2_USED {true} \
     CONFIG.CLKOUT3_DRIVES {Buffer} \
     CONFIG.CLKOUT4_DRIVES {Buffer} \
@@ -568,11 +559,11 @@ proc create_root_design { parentCell } {
     CONFIG.CLK_OUT2_PORT {axi_clk} \
     CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
     CONFIG.MMCM_BANDWIDTH {OPTIMIZED} \
-    CONFIG.MMCM_CLKFBOUT_MULT_F {9} \
+    CONFIG.MMCM_CLKFBOUT_MULT_F {10} \
     CONFIG.MMCM_CLKIN1_PERIOD {10.000} \
     CONFIG.MMCM_CLKIN2_PERIOD {10.000} \
-    CONFIG.MMCM_CLKOUT0_DIVIDE_F {9} \
-    CONFIG.MMCM_CLKOUT1_DIVIDE {2} \
+    CONFIG.MMCM_CLKOUT0_DIVIDE_F {10} \
+    CONFIG.MMCM_CLKOUT1_DIVIDE {4} \
     CONFIG.MMCM_COMPENSATION {AUTO} \
     CONFIG.MMCM_DIVCLK_DIVIDE {1} \
     CONFIG.NUM_OUT_CLKS {2} \
@@ -580,10 +571,12 @@ proc create_root_design { parentCell } {
     CONFIG.PRIMITIVE {Auto} \
     CONFIG.PRIM_SOURCE {No_buffer} \
     CONFIG.RESET_BOARD_INTERFACE {Custom} \
+    CONFIG.RESET_PORT {resetn} \
+    CONFIG.RESET_TYPE {ACTIVE_LOW} \
     CONFIG.SECONDARY_SOURCE {Single_ended_clock_capable_pin} \
     CONFIG.USE_LOCKED {true} \
     CONFIG.USE_PHASE_ALIGNMENT {false} \
-    CONFIG.USE_RESET {false} \
+    CONFIG.USE_RESET {true} \
     CONFIG.USE_SAFE_CLOCK_STARTUP {false} \
   ] $clk_wiz_0
 
@@ -602,37 +595,41 @@ proc create_root_design { parentCell } {
   ] $smartconnect_1
 
 
+  # Create instance: proc_sys_reset_2, and set properties
+  set proc_sys_reset_2 [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_2 ]
+
   # Create interface connections
   connect_bd_intf_net -intf_net S00_AXI_0_1 [get_bd_intf_ports S00_AXI_0] [get_bd_intf_pins smartconnect_0/S00_AXI]
+connect_bd_intf_net -intf_net [get_bd_intf_nets S00_AXI_0_1] [get_bd_intf_ports S00_AXI_0] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
   connect_bd_intf_net -intf_net S00_AXI_1_1 [get_bd_intf_ports QDMA_AXI] [get_bd_intf_pins smartconnect_1/S00_AXI]
   connect_bd_intf_net -intf_net S01_AXI_0_1 [get_bd_intf_ports S01_AXI_0] [get_bd_intf_pins smartconnect_0/S01_AXI]
+connect_bd_intf_net -intf_net [get_bd_intf_nets S01_AXI_0_1] [get_bd_intf_ports S01_AXI_0] [get_bd_intf_pins system_ila_0/SLOT_1_AXI]
   connect_bd_intf_net -intf_net S02_AXI_0_1 [get_bd_intf_ports S02_AXI_0] [get_bd_intf_pins smartconnect_0/S02_AXI]
   connect_bd_intf_net -intf_net S03_AXI_0_1 [get_bd_intf_ports S03_AXI_0] [get_bd_intf_pins smartconnect_0/S03_AXI]
   connect_bd_intf_net -intf_net smartconnect_0_M00_AXI [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins hbm_0/SAXI_16_8HI]
-connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
   connect_bd_intf_net -intf_net smartconnect_1_M00_AXI [get_bd_intf_pins smartconnect_1/M00_AXI] [get_bd_intf_pins hbm_0/SAXI_00_8HI]
 
   # Create port connections
   connect_bd_net -net HBM_REF_CLK_0_0_1  [get_bd_ports HBM_REF_CLK_0_0] \
-  [get_bd_pins hbm_0/HBM_REF_CLK_0] \
-  [get_bd_pins hbm_0/HBM_REF_CLK_1] \
   [get_bd_pins clk_wiz_0/clk_in1]
   connect_bd_net -net aresetn_0_1  [get_bd_ports aresetn_0] \
-  [get_bd_pins smartconnect_0/aresetn] \
-  [get_bd_pins smartconnect_1/aresetn] \
-  [get_bd_pins system_ila_1/probe0] \
-  [get_bd_pins proc_sys_reset_1/ext_reset_in]
+  [get_bd_pins proc_sys_reset_1/ext_reset_in] \
+  [get_bd_pins proc_sys_reset_0/ext_reset_in] \
+  [get_bd_pins clk_wiz_0/resetn] \
+  [get_bd_pins proc_sys_reset_2/ext_reset_in]
   connect_bd_net -net axi_clk_ariane_0_1  [get_bd_ports axi_clk] \
   [get_bd_pins smartconnect_0/aclk] \
-  [get_bd_pins smartconnect_1/aclk]
+  [get_bd_pins smartconnect_1/aclk] \
+  [get_bd_pins proc_sys_reset_2/slowest_sync_clk] \
+  [get_bd_pins system_ila_0/clk]
   connect_bd_net -net clk_wiz_0_apb_clk  [get_bd_pins clk_wiz_0/apb_clk] \
   [get_bd_pins hbm_0/APB_0_PCLK] \
   [get_bd_pins hbm_0/APB_1_PCLK] \
   [get_bd_pins proc_sys_reset_0/slowest_sync_clk] \
-  [get_bd_pins system_ila_1/clk]
+  [get_bd_pins hbm_0/HBM_REF_CLK_1] \
+  [get_bd_pins hbm_0/HBM_REF_CLK_0]
   connect_bd_net -net clk_wiz_0_axi_450_clk  [get_bd_pins clk_wiz_0/axi_clk] \
   [get_bd_pins proc_sys_reset_1/slowest_sync_clk] \
-  [get_bd_pins system_ila_0/clk] \
   [get_bd_pins smartconnect_0/aclk1] \
   [get_bd_pins smartconnect_1/aclk1] \
   [get_bd_pins hbm_0/AXI_00_ACLK] \
@@ -640,21 +637,20 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_0_M00_AXI] [get_bd_
   connect_bd_net -net clk_wiz_0_locked  [get_bd_pins clk_wiz_0/locked] \
   [get_bd_pins proc_sys_reset_1/dcm_locked] \
   [get_bd_pins proc_sys_reset_0/dcm_locked]
-  connect_bd_net -net ext_reset_in_0_1  [get_bd_ports apb_reset] \
-  [get_bd_pins proc_sys_reset_0/ext_reset_in]
   connect_bd_net -net hbm_0_apb_complete_0  [get_bd_pins hbm_0/apb_complete_0] \
   [get_bd_ports apb_complete_0_0]
   connect_bd_net -net hbm_0_apb_complete_1  [get_bd_pins hbm_0/apb_complete_1] \
   [get_bd_ports apb_complete_1_0]
   connect_bd_net -net proc_sys_reset_0_peripheral_aresetn  [get_bd_pins proc_sys_reset_0/peripheral_aresetn] \
   [get_bd_pins hbm_0/APB_0_PRESET_N] \
-  [get_bd_pins hbm_0/APB_1_PRESET_N] \
-  [get_bd_pins system_ila_1/probe1]
+  [get_bd_pins hbm_0/APB_1_PRESET_N]
   connect_bd_net -net proc_sys_reset_1_peripheral_aresetn  [get_bd_pins proc_sys_reset_1/peripheral_aresetn] \
-  [get_bd_pins system_ila_0/resetn] \
-  [get_bd_pins system_ila_1/probe2] \
   [get_bd_pins hbm_0/AXI_00_ARESET_N] \
   [get_bd_pins hbm_0/AXI_16_ARESET_N]
+  connect_bd_net -net proc_sys_reset_2_interconnect_aresetn  [get_bd_pins proc_sys_reset_2/interconnect_aresetn] \
+  [get_bd_pins smartconnect_0/aresetn] \
+  [get_bd_pins smartconnect_1/aresetn] \
+  [get_bd_pins system_ila_0/resetn]
 
   # Create address segments
   assign_bd_address -offset 0x00000000 -range 0x20000000 -target_address_space [get_bd_addr_spaces QDMA_AXI] [get_bd_addr_segs hbm_0/SAXI_00_8HI/HBM_MEM00] -force

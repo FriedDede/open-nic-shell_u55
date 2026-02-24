@@ -172,15 +172,25 @@ import kvs_pkg::*;
   logic apb_complete_0;
   logic apb_complete_reg;
   logic rstn;
+  logic axi_rstn_reg;
+
+  generic_reset #(
+    .NUM_INPUT_CLK(1)
+  ) generic_reset_instance (
+    .mod_rstn(axi_rstn),
+    .mod_rst_done(),
+    .clk(axis_aclk),
+    .rstn(axi_rstn_reg)
+  );
   
   always_ff @(posedge axis_aclk) begin
-     if(~axi_rstn)
+     if(~axi_rstn_reg)
        apb_complete_reg <= 1'b0;
      else
        apb_complete_reg <= apb_complete_0;
   end
 
-  assign rstn = axi_rstn && apb_complete_reg;
+  assign rstn = axi_rstn_reg && apb_complete_reg;
 
 // ------------------------------------------------------------------------------------------------------
 // AXIS SLICING
@@ -457,7 +467,7 @@ logic parser_metadata_in_valid_toggle;
 assign parser_metadata_in_valid = parser_metadata_in_valid_toggle && reg_axis_cmac_c2h_tvalid && reg_axis_cmac_c2h_tready;
 
 always_ff @(posedge axis_aclk) begin
-  if(~axi_rstn) begin
+  if(~axi_rstn_reg) begin
     parser_metadata_in_valid_toggle <= 1'b1;
   end
   else begin
@@ -475,7 +485,7 @@ logic is_replication_reg;
 assign axis_parser_to_filter_tdest = parser_metadata_valid ? is_replication : is_replication_reg;
 
 always_ff @(posedge axis_aclk) begin
-  if(~axi_rstn)
+  if(~axi_rstn_reg)
     is_replication_reg <= 1'b0;
   else if (parser_metadata_valid)
     is_replication_reg <= is_replication;
@@ -1085,7 +1095,7 @@ hbm_interface_wrapper i_hbm(
     .apb_complete_0_0  (apb_complete_0),
     .apb_complete_1_0  (),
 
-    .aresetn_0 (axi_rstn),
+    .aresetn_0 (axi_rstn_reg),
     .axi_clk   (axis_aclk),
 
     .HBM_REF_CLK_0_0 (hbm_ref_clk)
@@ -1099,7 +1109,7 @@ hbm_interface_wrapper i_hbm(
   // 1. QDMA H2C Interface (from Host to Card)
   always @(posedge axis_aclk) begin
     if (s_axis_qdma_h2c_tvalid && s_axis_qdma_h2c_tready) begin
-      $strobe("[%t] KVS_SUBSYS QDMA_H2C (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+      $display("[%t] KVS_SUBSYS QDMA_H2C (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
               $time, s_axis_qdma_h2c_tdata, s_axis_qdma_h2c_tkeep, s_axis_qdma_h2c_tlast, 
               s_axis_qdma_h2c_tuser_size, s_axis_qdma_h2c_tuser_src, s_axis_qdma_h2c_tuser_dst);
     end
@@ -1108,7 +1118,7 @@ hbm_interface_wrapper i_hbm(
   // 2. QDMA C2H Interface (from Card to Host)
   always @(posedge axis_aclk) begin
     if (m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS QDMA_C2H (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+      $display("[%t] KVS_SUBSYS QDMA_C2H (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
               $time, m_axis_qdma_c2h_tdata, m_axis_qdma_c2h_tkeep, m_axis_qdma_c2h_tlast,
               m_axis_qdma_c2h_tuser_size, m_axis_qdma_c2h_tuser_src, m_axis_qdma_c2h_tuser_dst);
     end
@@ -1117,7 +1127,7 @@ hbm_interface_wrapper i_hbm(
   // 3. CMAC H2C Interface (from Network to Card - filtered output to shell if any)
   always @(posedge axis_aclk) begin
     if (m_axis_cmac_h2c_tvalid && m_axis_cmac_h2c_tready) begin
-      $strobe("[%t] KVS_SUBSYS CMAC_H2C (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+      $display("[%t] KVS_SUBSYS CMAC_H2C (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
               $time, m_axis_cmac_h2c_tdata, m_axis_cmac_h2c_tkeep, m_axis_cmac_h2c_tlast,
               m_axis_cmac_h2c_tuser_size, m_axis_cmac_h2c_tuser_src, m_axis_cmac_h2c_tuser_dst);
     end
@@ -1126,7 +1136,7 @@ hbm_interface_wrapper i_hbm(
   // 4. CMAC C2H Interface (from Card to Network - incoming packets)
   always @(posedge axis_aclk) begin
     if (s_axis_cmac_c2h_tvalid && s_axis_cmac_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS CMAC_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+      $display("[%t] KVS_SUBSYS CMAC_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
               $time, s_axis_cmac_c2h_tdata, s_axis_cmac_c2h_tkeep, s_axis_cmac_c2h_tlast,
               s_axis_cmac_c2h_tuser_size, s_axis_cmac_c2h_tuser_src, s_axis_cmac_c2h_tuser_dst);
     end
@@ -1135,7 +1145,7 @@ hbm_interface_wrapper i_hbm(
   // 4. CMAC C2H REG Interface (from Card to Network - incoming packets)
   always @(posedge axis_aclk) begin
     if (reg_axis_cmac_c2h_tvalid && reg_axis_cmac_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS REG_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+      $display("[%t] KVS_SUBSYS REG_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
               $time, reg_axis_cmac_c2h_tdata, reg_axis_cmac_c2h_tkeep, reg_axis_cmac_c2h_tlast,
               reg_axis_cmac_c2h_tuser_size, reg_axis_cmac_c2h_tuser_src, reg_axis_cmac_c2h_tuser_dst);
     end
@@ -1144,7 +1154,7 @@ hbm_interface_wrapper i_hbm(
   // 5. DataMover Read Interface (from HBM via datamover)
   always @(posedge axis_aclk) begin
     if (axis_dm_read_tvalid && axis_dm_read_tready) begin
-      $strobe("[%t] KVS_SUBSYS DM_READ (MM2S): data=0x%h, keep=0x%h, last=%b", 
+      $display("[%t] KVS_SUBSYS DM_READ (MM2S): data=0x%h, keep=0x%h, last=%b", 
               $time, axis_dm_read_tdata, axis_dm_read_tkeep, axis_dm_read_tlast);
     end
   end
@@ -1152,7 +1162,7 @@ hbm_interface_wrapper i_hbm(
   // 6. DataMover Write Interface (to HBM via datamover)
   always @(posedge axis_aclk) begin
     if (axis_dm_write_tvalid && axis_dm_write_tready) begin
-      $strobe("[%t] KVS_SUBSYS DM_WRITE (S2MM): data=0x%h, keep=0x%h, last=%b", 
+      $display("[%t] KVS_SUBSYS DM_WRITE (S2MM): data=0x%h, keep=0x%h, last=%b", 
               $time, axis_dm_write_tdata, axis_dm_write_tkeep, axis_dm_write_tlast);
     end
   end
@@ -1160,7 +1170,7 @@ hbm_interface_wrapper i_hbm(
   // 7. Internal: Parser to Filter
   always @(posedge axis_aclk) begin
     if (axis_parser_to_filter_tvalid && axis_parser_to_filter_tready) begin
-      $strobe("[%t] KVS_SUBSYS PARSER->FILTER: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
+      $display("[%t] KVS_SUBSYS PARSER->FILTER: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
               $time, axis_parser_to_filter_tdata, axis_parser_to_filter_tkeep, axis_parser_to_filter_tlast, axis_parser_to_filter_tuser);
     end
   end
@@ -1168,7 +1178,7 @@ hbm_interface_wrapper i_hbm(
   // 8. Internal: Filter to Replication
   always @(posedge axis_aclk) begin
     if (axis_filter_to_replication_tvalid && axis_filter_to_replication_tready) begin
-      $strobe("[%t] KVS_SUBSYS FILTER->REPL: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
+      $display("[%t] KVS_SUBSYS FILTER->REPL: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
               $time, axis_filter_to_replication_tdata, axis_filter_to_replication_tkeep, axis_filter_to_replication_tlast, axis_filter_to_replication_tuser);
     end
   end
@@ -1176,7 +1186,7 @@ hbm_interface_wrapper i_hbm(
   // 9. Internal: Replication to Deparser
   always @(posedge axis_aclk) begin
     if (axis_replication_to_deparser_tvalid && axis_replication_to_deparser_tready) begin
-      $strobe("[%t] KVS_SUBSYS REPL->DEPARSER: data=0x%h, keep=0x%h, last=%b", 
+      $display("[%t] KVS_SUBSYS REPL->DEPARSER: data=0x%h, keep=0x%h, last=%b", 
               $time, axis_replication_to_deparser_tdata, axis_replication_to_deparser_tkeep, axis_replication_to_deparser_tlast);
     end
   end
@@ -1184,7 +1194,7 @@ hbm_interface_wrapper i_hbm(
   // 10. Internal: Deparser to Arbiter
   always @(posedge axis_aclk) begin
     if (axis_deparser_to_arbiter_tvalid && axis_deparser_to_arbiter_tready) begin
-      $strobe("[%t] KVS_SUBSYS DEPARSER->ARBITER: data=0x%h, keep=0x%h, last=%b", 
+      $display("[%t] KVS_SUBSYS DEPARSER->ARBITER: data=0x%h, keep=0x%h, last=%b", 
               $time, axis_deparser_to_arbiter_tdata, axis_deparser_to_arbiter_tkeep, axis_deparser_to_arbiter_tlast);
     end
   end
@@ -1192,7 +1202,7 @@ hbm_interface_wrapper i_hbm(
   // Metadata Monitors
   always @(posedge axis_aclk) begin
     if (parser_metadata_valid) begin
-      $strobe("[%t] KVS_SUBSYS PARSER_META: ip=0x%h, mac=0x%h, opcode=%d, index=%d, key=0x%h, is_repl=%b", 
+      $display("[%t] KVS_SUBSYS PARSER_META: ip=0x%h, mac=0x%h, opcode=%d, index=%d, key=0x%h, is_repl=%b", 
               $time, 
               parser_metadata.ip, 
               parser_metadata.mac, 
@@ -1205,7 +1215,7 @@ hbm_interface_wrapper i_hbm(
 
   always @(posedge axis_aclk) begin
     if (replication_metadata_valid) begin
-      $strobe("[%t] KVS_SUBSYS REPL_META: ip=0x%h, mac=0x%h, opcode=%d, index=%d, key=0x%h", 
+      $display("[%t] KVS_SUBSYS REPL_META: ip=0x%h, mac=0x%h, opcode=%d, index=%d, key=0x%h", 
               $time, 
               replication_metadata.ip, 
               replication_metadata.mac, 

@@ -927,7 +927,22 @@ module open_nic_shell #(
 
   logic REF_CLK, HBM_REF_CLK;
 
+  IBUFDS hbm_ref_clk (
+    .I(HBM_ref_clk_p), 
+    .IB(HBM_ref_clk_n),
+    .O(REF_CLK)
+    );
+
+  BUFG hbm_ref_clk_bufg (
+    .I(REF_CLK), 
+    .O(HBM_REF_CLK)
+    );
+    
+  `ifdef __simulation__
   kvs_subsystem #(
+  `else
+  kvs_subsystem_cache #(
+  `endif
   ) kvs_subsystem_inst (
     .s_axil_awvalid                   (axil_box0_awvalid),
     .s_axil_awaddr                    (axil_box0_awaddr),

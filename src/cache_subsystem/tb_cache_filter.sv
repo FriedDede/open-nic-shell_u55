@@ -5,7 +5,6 @@ module tb_cache_filter();
     // ---------------------------------------------------------
     // Parameters
     // We override INDEX_BITS to 6 (64 sets) instead of 13 (8192 sets)
-    // so the Tag RAM initialization doesn't take 8192 clock cycles in simulation!
     // ---------------------------------------------------------
     parameter ADDR_WIDTH  = 40;
     parameter DATA_WIDTH  = 64;

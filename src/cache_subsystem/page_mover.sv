@@ -3,7 +3,6 @@
 module page_mover #(
     parameter ADDR_WIDTH    = 40,
     parameter DATA_WIDTH    = 512,
-    parameter MAX_BURST_LEN = 256,
     parameter PAGE_SIZE     = 2*1024*1024
 )(
     input  logic                    aclk,
@@ -55,23 +54,23 @@ module page_mover #(
 );
 
     // Constants derived from 2MB page / 512-bit width
-    localparam TOTAL_BEATS       = PAGE_SIZE / (DATA_WIDTH / 8); // 2MB / 64 Bytes
-    localparam BURST_LEN         = MAX_BURST_LEN;   // Max AXI burst
-    localparam TOTAL_BURSTS      = TOTAL_BEATS / BURST_LEN; // 128
-    localparam BYTES_PER_BURST   = BURST_LEN * (DATA_WIDTH/8); // 16KB
+    localparam unsigned TOTAL_BEATS       = PAGE_SIZE / (DATA_WIDTH / 8); // 2MB / 64 Bytes
+    localparam unsigned BURST_LEN         = 4;   // Max AXI burst
+    localparam unsigned TOTAL_BURSTS      = TOTAL_BEATS / BURST_LEN; // 128
+    localparam unsigned BYTES_PER_BURST   = BURST_LEN * (DATA_WIDTH/8); // 16KB
 
     // ---------------------------------------------------------
     // Internal FIFO (Decoupler)
     // ---------------------------------------------------------
     // A simple FIFO to buffer data between Read and Write domains
-    logic [DATA_WIDTH-1:0] fifo_data [15:0]; // Depth 16
-    logic [3:0]            fifo_wr_ptr, fifo_rd_ptr;
-    logic [4:0]            fifo_count;
+    logic [DATA_WIDTH-1 :0] fifo_data [BURST_LEN -1 :0]; // Depth 16
+    logic [BURST_LEN -1 :0]            fifo_wr_ptr, fifo_rd_ptr;
+    logic [BURST_LEN    :0]            fifo_count;
     logic                  fifo_full, fifo_empty;
 
     logic                  push, pop;
     
-    assign fifo_full  = (fifo_count == 16);
+    assign fifo_full  = (fifo_count == 4);
     assign fifo_empty = (fifo_count == 0);
     assign push       = m_src_rvalid && m_src_rready;
     assign pop        = m_dst_wvalid && m_dst_wready;
@@ -110,22 +109,22 @@ module page_mover #(
     state_t state;
     
     // Counters
-    logic [7:0]  burst_cnt;      // Counts up to 128 bursts
-    logic [8:0]  beat_cnt;       // Counts up to 256 beats within a burst
-    logic [ADDR_WIDTH-1:0] current_src_addr;
-    logic [ADDR_WIDTH-1:0] current_dst_addr;
+    logic unsigned [31:0]  burst_cnt;
+    logic unsigned [31:0]  beat_cnt;
+    logic unsigned [ADDR_WIDTH-1:0] current_src_addr;
+    logic unsigned [ADDR_WIDTH-1:0] current_dst_addr;
 
     // ---------------------------------------------------------
     // AXI Assignments
     // ---------------------------------------------------------
     // Constant / Passthrough signals
-    assign m_src_arlen     = BURST_LEN - 1; // 255 (AXI is Len-1)
-    assign m_src_arsize    = 3'b110;        // 64 Bytes (512 bits)
-    assign m_src_arburst   = 2'b01;         // INCR
-    assign m_dst_awlen   = BURST_LEN - 1;
-    assign m_dst_awsize  = 3'b110;
-    assign m_dst_awburst = 2'b01;
-    assign m_dst_wstrb   = '1;          // Simplified: assume full width valid
+    assign m_src_arlen      = BURST_LEN - 1; // 255 (AXI is Len-1)
+    assign m_src_arsize     = 3'b110;        // 64 Bytes (512 bits)
+    assign m_src_arburst    = 2'b01;         // INCR
+    assign m_dst_awlen      = BURST_LEN - 1;
+    assign m_dst_awsize     = 3'b110;
+    assign m_dst_awburst    = 2'b01;
+    assign m_dst_wstrb      = '1;          // Simplified: assume full width valid
 
     // Address Outputs
     assign m_src_araddr    = current_src_addr;
@@ -234,5 +233,17 @@ module page_mover #(
             endcase
         end
     end
-
+    // ---------------------------------------------------------
+    // Assertions
+    // ---------------------------------------------------------
+    initial begin
+        if (TOTAL_BURSTS > (2**$bits(burst_cnt) - 1)) begin
+            $fatal(1, "TOTAL_BURSTS (%0d) exceeds max value holdable by burst_cnt (%0d). Increase burst_cnt width.",
+                TOTAL_BURSTS, (2**$bits(burst_cnt) - 1));
+        end
+        if (BURST_LEN > (2**$bits(beat_cnt) - 1)) begin
+            $fatal(1, "BURST_LEN (%0d) exceeds max value holdable by beat_cnt (%0d). Increase beat_cnt width.",
+                BURST_LEN, (2**$bits(beat_cnt) - 1));
+        end
+    end
 endmodule

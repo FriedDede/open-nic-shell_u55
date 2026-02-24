@@ -173,14 +173,25 @@ import kvs_pkg::*;
   logic apb_complete_reg;
   logic rstn;
   
+  logic axi_rstn_reg;
+
+  generic_reset #(
+    .NUM_INPUT_CLK(1)
+  ) generic_reset_instance (
+    .mod_rstn(axi_rstn),
+    .mod_rst_done(),
+    .clk(axis_aclk),
+    .rstn(axi_rstn_reg)
+  );
+  
   always_ff @(posedge axis_aclk) begin
-     if(~axi_rstn)
+     if(~axi_rstn_reg)
        apb_complete_reg <= 1'b0;
      else
        apb_complete_reg <= apb_complete_0;
   end
 
-  assign rstn = axi_rstn && apb_complete_reg;
+  assign rstn = axi_rstn_reg && apb_complete_reg;
 
 // ------------------------------------------------------------------------------------------------------
 // AXIS SLICING
@@ -457,7 +468,7 @@ logic parser_metadata_in_valid_toggle;
 assign parser_metadata_in_valid = parser_metadata_in_valid_toggle && reg_axis_cmac_c2h_tvalid && reg_axis_cmac_c2h_tready;
 
 always_ff @(posedge axis_aclk) begin
-  if(~axi_rstn) begin
+  if(~axi_rstn_reg) begin
     parser_metadata_in_valid_toggle <= 1'b1;
   end
   else begin
@@ -475,7 +486,7 @@ logic is_replication_reg;
 assign axis_parser_to_filter_tdest = parser_metadata_valid ? is_replication : is_replication_reg;
 
 always_ff @(posedge axis_aclk) begin
-  if(~axi_rstn)
+  if(~axi_rstn_reg)
     is_replication_reg <= 1'b0;
   else if (parser_metadata_valid)
     is_replication_reg <= is_replication;
@@ -903,7 +914,7 @@ cache_subsystem #(
   .DATA_WIDTH   (cache_ss_pkg::DataWidth),
   .ID_WIDTH     (cache_ss_pkg::IdWidth),
   .OFFSET_BITS  (cache_ss_pkg::OFFSET_BITS),
-  .INDEX_BITS   (11),
+  .INDEX_BITS   (9),
   .MAX_BURST_LEN(16),
   .PAGE_SIZE    (2*1024*1024)
 ) cache_subsystem_instance (
@@ -977,12 +988,14 @@ cache_subsystem #(
   .m_axi_pm_to_cache_arburst    (axi_mm_cache_to_hbm[1].ar_burst),
   .m_axi_pm_to_cache_arvalid    (axi_mm_cache_to_hbm[1].ar_valid),
   .m_axi_pm_to_cache_arready    (axi_mm_cache_to_hbm[1].ar_ready),
+
   .m_axi_pm_to_cache_rid        (axi_mm_cache_to_hbm[1].r_id),
   .m_axi_pm_to_cache_rdata      (axi_mm_cache_to_hbm[1].r_data),
   .m_axi_pm_to_cache_rresp      (axi_mm_cache_to_hbm[1].r_resp),
   .m_axi_pm_to_cache_rvalid     (axi_mm_cache_to_hbm[1].r_valid),
   .m_axi_pm_to_cache_rready     (axi_mm_cache_to_hbm[1].r_ready),
   .m_axi_pm_to_cache_rlast      (axi_mm_cache_to_hbm[1].r_last),
+
   .m_axi_pm_to_cache_awid       (axi_mm_cache_to_hbm[1].aw_id),
   .m_axi_pm_to_cache_awaddr     (axi_mm_cache_to_hbm[1].aw_addr),
   .m_axi_pm_to_cache_awlen      (axi_mm_cache_to_hbm[1].aw_len),
@@ -990,11 +1003,13 @@ cache_subsystem #(
   .m_axi_pm_to_cache_awburst    (axi_mm_cache_to_hbm[1].aw_burst),
   .m_axi_pm_to_cache_awvalid    (axi_mm_cache_to_hbm[1].aw_valid),
   .m_axi_pm_to_cache_awready    (axi_mm_cache_to_hbm[1].aw_ready),
+
   .m_axi_pm_to_cache_wdata      (axi_mm_cache_to_hbm[1].w_data),
-  .m_axi_pm_to_cache_wstrb      (axi_mm_cache_to_hbm[1].w_strb),
+  .m_axi_pm_to_cache_wstrb      (),
   .m_axi_pm_to_cache_wlast      (axi_mm_cache_to_hbm[1].w_last),
   .m_axi_pm_to_cache_wvalid     (axi_mm_cache_to_hbm[1].w_valid),
   .m_axi_pm_to_cache_wready     (axi_mm_cache_to_hbm[1].w_ready),
+
   .m_axi_pm_to_cache_bid        (axi_mm_cache_to_hbm[1].b_id),
   .m_axi_pm_to_cache_bresp      (axi_mm_cache_to_hbm[1].b_resp),
   .m_axi_pm_to_cache_bvalid     (axi_mm_cache_to_hbm[1].b_valid),
@@ -1030,6 +1045,8 @@ cache_subsystem #(
   .m_axi_mem_bvalid       (m_axi_sys_mem_bvalid),
   .m_axi_mem_bready       (m_axi_sys_mem_bready)
 );
+
+assign axi_mm_cache_to_hbm[1].w_strb = '1;
 
 hbm_interface_wrapper i_hbm(
     
@@ -1082,7 +1099,7 @@ hbm_interface_wrapper i_hbm(
     .apb_complete_0_0  (apb_complete_0),
     .apb_complete_1_0  (),
 
-    .aresetn_0 (axi_rstn),
+    .aresetn_0 (axi_rstn_reg),
     .axi_clk   (axis_aclk),
 
     .HBM_REF_CLK_0_0 (hbm_ref_clk)
