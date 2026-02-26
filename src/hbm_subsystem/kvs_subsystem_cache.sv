@@ -166,7 +166,9 @@ import kvs_pkg::*;
   output         s_axis_cmac_c2h_tready
 );
 
-// RESET
+// ------------------------------------------------------------------------------------------------------
+// RESET 
+// ------------------------------------------------------------------------------------------------------
 // The reset waits until the HBM has finished initial configuration
     
   logic apb_complete_0;
@@ -194,7 +196,7 @@ import kvs_pkg::*;
   assign rstn = axi_rstn_reg && apb_complete_reg;
 
 // ------------------------------------------------------------------------------------------------------
-// AXIS SLICING
+// IN/OUT AXIS SLICING
 // ------------------------------------------------------------------------------------------------------
 
   logic           reg_axis_qdma_h2c_tvalid; 
@@ -492,6 +494,11 @@ always_ff @(posedge axis_aclk) begin
     is_replication_reg <= is_replication;
 end
 
+// ------------------------------------------------------------------------------------------------------
+// PACKET PIPELINE
+// ------------------------------------------------------------------------------------------------------
+
+
 // Split the QDMA's tuser into each part
 logic [47:0] axis_qdma_c2h_tuser;
 assign reg_axis_qdma_c2h_tuser_size = axis_qdma_c2h_tuser[47:32];
@@ -645,7 +652,6 @@ replication_subsystem #(
   .m_axi_wvalid              (axi_wvalid)
 );
 
-
 packet_deparser packet_deparser_inst (
   .s_axis_tvalid           (axis_replication_to_deparser_tvalid), 
   .s_axis_tdata            (axis_replication_to_deparser_tdata), 
@@ -687,6 +693,9 @@ packet_arbiter packet_arbiter_inst (
   .aresetn                 (rstn)
 );
 
+// ------------------------------------------------------------------------------------------------------
+// MEMORY ACCESS
+// ------------------------------------------------------------------------------------------------------
 
 // Host memory mapping
 // confines host memory region, avoiding to spill into not reserved ram, wraps around a the end
@@ -709,7 +718,6 @@ AXI_BUS #(
   .AXI_ID_WIDTH   (cache_ss_pkg::IdWidth),
   .AXI_USER_WIDTH (0)
 ) axi_mm_pf_to_cache();
-
 
 prefilter_bd_wrapper i_pf(
     .M00_AXI_0_araddr		(axi_mm_pf_to_cache.ar_addr),
@@ -1005,7 +1013,7 @@ cache_subsystem #(
   .m_axi_pm_to_cache_awready    (axi_mm_cache_to_hbm[1].aw_ready),
 
   .m_axi_pm_to_cache_wdata      (axi_mm_cache_to_hbm[1].w_data),
-  .m_axi_pm_to_cache_wstrb      (),
+  .m_axi_pm_to_cache_wstrb      (axi_mm_cache_to_hbm[1].w_strb),
   .m_axi_pm_to_cache_wlast      (axi_mm_cache_to_hbm[1].w_last),
   .m_axi_pm_to_cache_wvalid     (axi_mm_cache_to_hbm[1].w_valid),
   .m_axi_pm_to_cache_wready     (axi_mm_cache_to_hbm[1].w_ready),
@@ -1046,7 +1054,59 @@ cache_subsystem #(
   .m_axi_mem_bready       (m_axi_sys_mem_bready)
 );
 
-assign axi_mm_cache_to_hbm[1].w_strb = '1;
+/*
+ila_0 ila_cache (
+   .clk          (axis_aclk),
+   .probe0       (m_axi_sys_mem_arvalid),
+   .probe1       (m_axi_sys_mem_araddr),
+   .probe2       ('0),
+   .probe3       (m_axi_sys_mem_awready),
+   .probe4       ('0),
+   .probe5       (m_axi_sys_mem_awaddr),
+   .probe6       (m_axi_sys_mem_arready),
+   .probe7       (m_axi_sys_mem_rvalid),
+   .probe8       (m_axi_sys_mem_rready),
+   .probe9       (m_axi_sys_mem_rlast),
+   .probe10      (m_axi_sys_mem_rdata),
+   .probe11      ('0),
+   .probe12      ('0),
+   .probe13      ('0),
+   .probe14      (m_axi_sys_mem_wdata),
+   .probe15      (m_axi_sys_mem_wstrb),
+   .probe16      ('0),
+   .probe17      ('0),
+   .probe18      ('0),
+   .probe19      ('0),
+   .probe20      ('0),
+   .probe21      ('0),
+   .probe22      ('0),
+   .probe23      ('0),
+   .probe24      ('0),
+   .probe25      ('0),
+   .probe26      ('0),
+   .probe27      ('0),
+   .probe28      ('0),
+   .probe29      ('0),
+   .probe30      ('0),
+   .probe31      ('0),
+   .probe32      ('0),
+   .probe33      ('0),
+   .probe34      ('0),
+   .probe35      ('0),
+   .probe36      ('0),
+   .probe37      ('0),
+   .probe38      ('0),
+   .probe39      ('0),
+   .probe40      ('0),
+   .probe41      (m_axi_sys_mem_wready),
+   .probe42      (m_axi_sys_mem_wvalid),
+   .probe43      (m_axi_sys_mem_wlast)
+ );
+*/
+
+// ------------------------------------------------------------------------------------------------------
+// HBM INTERFACE
+// ------------------------------------------------------------------------------------------------------
 
 hbm_interface_wrapper i_hbm(
     

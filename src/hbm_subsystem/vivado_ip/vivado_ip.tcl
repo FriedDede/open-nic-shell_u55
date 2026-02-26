@@ -5,4 +5,5 @@ set ips {
   packet_deparser
   packet_arbiter_mt
   axis_demux
+  ila_0
 }

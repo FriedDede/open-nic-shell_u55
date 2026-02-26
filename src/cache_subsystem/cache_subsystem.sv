@@ -85,7 +85,7 @@ module cache_subsystem
     input  logic                    m_axi_cache_awready,
 
     output logic [DATA_WIDTH-1:0]   m_axi_cache_wdata,
-    output logic                    m_axi_cache_wstrb, // All 1s (Write full width)
+    output logic [DATA_WIDTH/8-1:0] m_axi_cache_wstrb, // All 1s (Write full width)
     output logic                    m_axi_cache_wlast,
     output logic                    m_axi_cache_wvalid,
     input  logic                    m_axi_cache_wready,
@@ -123,7 +123,7 @@ module cache_subsystem
     input  logic                    m_axi_pm_to_cache_awready,
 
     output logic [DATA_WIDTH-1:0]   m_axi_pm_to_cache_wdata,
-    output logic                    m_axi_pm_to_cache_wstrb, // All 1s (Write full width)
+    output logic [DATA_WIDTH/8-1:0] m_axi_pm_to_cache_wstrb, // All 1s (Write full width)
     output logic                    m_axi_pm_to_cache_wlast,
     output logic                    m_axi_pm_to_cache_wvalid,
     input  logic                    m_axi_pm_to_cache_wready,
@@ -161,7 +161,7 @@ module cache_subsystem
     input  logic                    m_axi_mem_awready,
 
     output logic [DATA_WIDTH-1:0]   m_axi_mem_wdata,
-    output logic                    m_axi_mem_wstrb, // All 1s (Write full width)
+    output logic [DATA_WIDTH/8-1:0] m_axi_mem_wstrb, // All 1s (Write full width)
     output logic                    m_axi_mem_wlast,
     output logic                    m_axi_mem_wvalid,
     input  logic                    m_axi_mem_wready,

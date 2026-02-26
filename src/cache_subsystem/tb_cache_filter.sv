@@ -6,11 +6,11 @@ module tb_cache_filter();
     // Parameters
     // We override INDEX_BITS to 6 (64 sets) instead of 13 (8192 sets)
     // ---------------------------------------------------------
-    parameter ADDR_WIDTH  = 40;
-    parameter DATA_WIDTH  = 64;
+    parameter ADDR_WIDTH  = 34;
+    parameter DATA_WIDTH  = 512;
     parameter ID_WIDTH    = 4;
     parameter OFFSET_BITS = 21;
-    parameter INDEX_BITS  = 6;  
+    parameter INDEX_BITS  = 9;  
 
     // ---------------------------------------------------------
     // Signals
@@ -221,7 +221,7 @@ module tb_cache_filter();
         $display("[%0t] Setup Complete. Beginning tests.", $time);
 
         // Define Test Addresses
-        // Tag (13 bits), Index (6 bits), Offset (21 bits)
+        // Tag (4 bits), Index (9 bits), Offset (21 bits)
         // Addr 1: Tag=1, Index=1, Offset=0  -> 40'h00_0820_0000
         // Addr 2: Tag=1, Index=1, Offset=8  -> 40'h00_0820_0008
         // Addr 3: Tag=2, Index=1, Offset=0  -> 40'h00_1020_0000
@@ -236,18 +236,18 @@ module tb_cache_filter();
 
         // TEST 3: Write Hit -> Goes directly to cache, marks dirty
         $display("\n--- TEST 3: Write Hit (Marking Dirty) ---");
-        cpu_write(40'h00_0820_0000, 64'h11223344_55667788);
+        cpu_write(40'h00_0820_0000, 512'h11223344_55667788);
 
         // TEST 4: Read Miss (Dirty) -> Triggers Evict, then Fetch
         $display("\n--- TEST 4: Read Miss (Dirty Line) ---");
-        cpu_read(40'h00_1020_0000); // Same Index (1), New Tag (2)
+        cpu_read(40'h01_0820_0000); // Same Index (1), New Tag (2)
 
         // TEST 5: Mutual Exclusion (Race Condition)
         $display("\n--- TEST 5: Mutual Exclusion (Simultaneous Read/Write Miss) ---");
         // Tag 3 and Tag 4, both hitting Index 2
         fork
             cpu_read(40'h00_1840_0000); // Thread A: Read
-            cpu_write(40'h00_2040_0000, 64'h99999999); // Thread B: Write
+            cpu_write(40'h00_2040_0000, 512'h99999999); // Thread B: Write
         join
         
         $display("\n[%0t] ALL TESTS COMPLETED SUCCESSFULLY.", $time);

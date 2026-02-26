@@ -246,11 +246,11 @@ module cache_filter #(
 // READ CACHE
 // ------------------------------------------------------------------------------------------------------------------
     
-    always_ff @(posedge aclk or negedge aresetn) begin : read_control_fsm
+    always_ff @(posedge aclk or negedge aresetn) begin : read_address_reg
         if (!aresetn) begin
             r_state <= IDLE;
             r_latched_addr_valid <= 0;
-            
+            r_latched_addr       <= '0;
             // Resetting RAM usually requires loop or specialized reset, 
             // omitted here for synthesis efficiency (assume INVALID on startup)
         end else begin
@@ -267,10 +267,12 @@ module cache_filter #(
                 r_latched_addr_valid <= 0;
             end
         end
-    end : read_control_fsm
+    end : read_address_reg
 
     always_ff @(posedge aclk) begin : r_tag_read
         // Only read from RAM when we have a valid request in IDLE
+        if (!aresetn) read_current_line <= '0;
+
         if (r_state == IDLE && s_axi_arvalid) 
             read_current_line <= tag_ram[s_axi_araddr[OFFSET_BITS +: INDEX_BITS]];
     end
@@ -361,11 +363,11 @@ module cache_filter #(
 // WRITE CACHE
 // ------------------------------------------------------------------------------------------------------------------
     
-    always_ff @(posedge aclk or negedge aresetn) begin : write_control_fsm
+    always_ff @(posedge aclk or negedge aresetn) begin : write_address_reg
         if (!aresetn) begin
             w_state <= IDLE;
             w_latched_addr_valid <= 0;
-            
+            w_latched_addr <= '0;
             // Resetting RAM usually requires loop or specialized reset, 
             // omitted here for synthesis efficiency (assume INVALID on startup)
         end else begin
@@ -373,7 +375,7 @@ module cache_filter #(
             
             // Latch Address on handshake
             if (s_axi_awvalid && s_axi_awready) begin
-                w_latched_addr <= s_axi_araddr;
+                w_latched_addr <= s_axi_awaddr;
                 w_latched_addr_valid <= 1;
             end
             
@@ -382,10 +384,12 @@ module cache_filter #(
                 w_latched_addr_valid <= 0;
             end
         end
-    end : write_control_fsm
+    end : write_address_reg
 
     always_ff @(posedge aclk) begin : w_tag_read
         // Only read from RAM when we have a valid request in IDLE
+        if (!aresetn) write_current_line <= '0;
+
         if (w_state == IDLE && s_axi_awvalid) 
             write_current_line <= tag_ram[s_axi_awaddr[OFFSET_BITS +: INDEX_BITS]];
     end

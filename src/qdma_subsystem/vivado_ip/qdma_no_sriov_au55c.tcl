@@ -51,6 +51,8 @@ set_property -dict [list \
   CONFIG.xlnx_ref_board {AU55C} \
   CONFIG.csr_axilite_slave {true} \
   CONFIG.en_bridge_slv {true} \
+  CONFIG.axibar_highaddr_0 {0xffffffffffffffff} \
+  CONFIG.axibar_notranslate {true} \
 ] [get_ips qdma_no_sriov]
 set_property CONFIG.tl_pf_enable_reg $num_phys_func [get_ips $qdma]
 set_property CONFIG.num_queues $num_queue [get_ips $qdma]

@@ -21,11 +21,11 @@ localparam  N_THREADS = 4;
 
 // TODO: make the ip and mac settable from software
 // node 0
-//localparam logic [31:0] NODE_IP         = 32'hC0643300;
-//localparam logic [47:0] NODE_MAC        = 48'h020A35070000;
+ localparam logic [31:0] NODE_IP         = 32'hC0643300;
+ localparam logic [47:0] NODE_MAC        = 48'h020A35070000;
 // node 1
-localparam logic [31:0] NODE_IP         = 32'hC0643301;
-localparam logic [47:0] NODE_MAC        = 48'h020A35070001;
+//localparam logic [31:0] NODE_IP         = 32'hC0643301;
+//localparam logic [47:0] NODE_MAC        = 48'h020A35070001;
 
 localparam int          MAX_NODES       = 32;
 
