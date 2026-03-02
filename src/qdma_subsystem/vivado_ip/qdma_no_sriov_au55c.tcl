@@ -52,6 +52,8 @@ set_property -dict [list \
   CONFIG.csr_axilite_slave {true} \
   CONFIG.en_bridge_slv {true} \
   CONFIG.xdma_axilite_slave {false} \
+  CONFIG.axibar_highaddr_0 {0x000000FFFFFFFFFF} \
+  CONFIG.axibar_notranslate {false} \
 ] [get_ips qdma_no_sriov]
 set_property CONFIG.tl_pf_enable_reg $num_phys_func [get_ips $qdma]
 set_property CONFIG.num_queues $num_queue [get_ips $qdma]
