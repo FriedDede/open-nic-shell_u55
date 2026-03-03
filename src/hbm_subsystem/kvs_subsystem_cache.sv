@@ -498,7 +498,6 @@ end
 // PACKET PIPELINE
 // ------------------------------------------------------------------------------------------------------
 
-
 // Split the QDMA's tuser into each part
 logic [47:0] axis_qdma_c2h_tuser;
 assign reg_axis_qdma_c2h_tuser_size = axis_qdma_c2h_tuser[47:32];
@@ -550,20 +549,20 @@ packet_filter packet_filter_inst (
 );
 
 replication_subsystem #(
-  .DATA_WIDTH                (DATA_WIDTH),
-  .FIFO_DEPTH                (16),
-  .NODE_IP                   (kvs_pkg::NODE_IP),
-  .NODE_MAC                  (kvs_pkg::NODE_MAC),
-  .MAX_NODES                 (kvs_pkg::MAX_NODES),
-  .BUCKET_SIZE               (kvs_pkg::BUCKET_SIZE),
-  .NUM_HASHES                (kvs_pkg::NUM_HASHES),
-  .HASH_WIDTH                (kvs_pkg::HASH_WIDTH),
-  .TIMER_WIDTH               (kvs_pkg::TIMER_WIDTH),
-  .SEED                      (kvs_pkg::SEED),
-  .TAP_MASK                  (kvs_pkg::TAP_MASK),
-  .USE_CONTROLLER            (kvs_pkg::USE_CONTROLLER),
-  .HASH_MATRIX               (kvs_pkg::HASH_MATRIX)
-) replication_subsystem_inst (
+    .DATA_WIDTH                (DATA_WIDTH),
+    .FIFO_DEPTH                (16),
+    .NODE_IP                   (kvs_pkg::NODE_IP),
+    .NODE_MAC                  (kvs_pkg::NODE_MAC),
+    .MAX_NODES                 (kvs_pkg::MAX_NODES),
+    .BUCKET_SIZE               (kvs_pkg::BUCKET_SIZE),
+    .NUM_HASHES                (kvs_pkg::NUM_HASHES),
+    .HASH_WIDTH                (kvs_pkg::HASH_WIDTH),
+    .TIMER_WIDTH               (kvs_pkg::TIMER_WIDTH),
+    .SEED                      (kvs_pkg::SEED),
+    .TAP_MASK                  (kvs_pkg::TAP_MASK),
+    .USE_CONTROLLER            (kvs_pkg::USE_CONTROLLER),
+    .HASH_MATRIX               (kvs_pkg::HASH_MATRIX)
+  ) replication_subsystem_inst (
   .axis_aclk                 (axis_aclk),
   .axil_aclk                 (axil_aclk),
   .axi_rstn                  (rstn),
@@ -590,8 +589,8 @@ replication_subsystem #(
   .s_axis_tkeep              (axis_filter_to_replication_tkeep),
   .s_axis_tlast              (axis_filter_to_replication_tlast),
   .s_axis_tready             (axis_filter_to_replication_tready),
-  .metadata_in               (parser_metadata),
-  .metadata_in_valid         (parser_metadata_valid && is_replication),
+  .parser2rep_meta               (parser_metadata),
+  .parser2rep_meta_valid         (parser_metadata_valid && is_replication),
    
   .m_axis_tvalid             (axis_replication_to_deparser_tvalid),
   .m_axis_tdata              (axis_replication_to_deparser_tdata),
@@ -925,7 +924,7 @@ cache_subsystem #(
   .INDEX_BITS   (9),
   .MAX_BURST_LEN(16),
   .PAGE_SIZE    (2*1024*1024)
-) cache_subsystem_instance (
+ ) cache_subsystem_instance (
   .aclk(axis_aclk),
   .aresetn(rstn),
 

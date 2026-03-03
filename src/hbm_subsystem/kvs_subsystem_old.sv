@@ -405,8 +405,8 @@ replication_subsystem #(
   .s_axis_tkeep              (axis_filter_to_replication_tkeep),
   .s_axis_tlast              (axis_filter_to_replication_tlast),
   .s_axis_tready             (axis_filter_to_replication_tready),
-  .metadata_in               (parser_metadata),
-  .metadata_in_valid         (parser_metadata_valid && is_replication),
+  .parser2rep_meta               (parser_metadata),
+  .parser2rep_meta_valid         (parser_metadata_valid && is_replication),
    
   .m_axis_tvalid             (axis_replication_to_deparser_tvalid),
   .m_axis_tdata              (axis_replication_to_deparser_tdata),

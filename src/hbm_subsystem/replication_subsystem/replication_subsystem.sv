@@ -28,8 +28,8 @@ module replication_subsystem #(
   input  logic                  s_axis_tlast,
   output logic                  s_axis_tready,
 
-  input  st_metadata            metadata_in,
-  input  logic                  metadata_in_valid,
+  input  st_metadata            parser2rep_meta,
+  input  logic                  parser2rep_meta_valid,
 
   output logic                  m_axis_tvalid,
   output logic [DATA_WIDTH-1:0] m_axis_tdata,
@@ -134,16 +134,22 @@ logic         axis_engine_to_deparser_tready;
 
 st_metadata   replication_metadata_in;
 logic         replication_metadata_in_valid;
-st_metadata   replication_metadata_out;
-logic         replication_metadata_out_valid;
+
+st_metadata   rep2deparser_meta;
+logic         rep2deparser_meta_valid;
+
 st_metadata   election_metadata_in;
 logic         election_metadata_in_valid;
+
 st_metadata   election_metadata_out;
 logic         election_metadata_out_valid;
-st_metadata   memory_metadata_in;
-logic         memory_metadata_in_valid;
-st_metadata   memory_metadata_out;
-logic         memory_metadata_out_valid;
+
+st_metadata   rep2hash_meta;
+logic         rep2hash_meta_valid;
+logic         rep2hash_meta_ready;
+
+st_metadata   hash2rep_meta;
+logic         hash2rep_meta_valid;
 
 logic is_leader;
 
@@ -180,9 +186,9 @@ always_comb begin
   metadata_out_valid         = 1'b0;
   metadata_out               = '0;
   election_metadata_ready    = 1'b0;
-  if (replication_metadata_out_valid) begin
+  if (rep2deparser_meta_valid) begin
     metadata_out_valid         = 1'b1;
-    metadata_out               = replication_metadata_out;
+    metadata_out               = rep2deparser_meta;
   end
   else if (!election_metadata_empty && !axis_engine_to_deparser_tvalid) begin
     metadata_out_valid         = 1'b1;
@@ -205,8 +211,8 @@ replication_engine #(
   .s_axis_tlast              (s_axis_tlast),
   .s_axis_tready             (s_axis_tready),
 
-  .metadata_in               (metadata_in),
-  .metadata_in_valid         (metadata_in_valid),
+  .metadata_in               (parser2rep_meta),
+  .metadata_in_valid         (parser2rep_meta_valid),
 
   .m_axis_tvalid             (axis_engine_to_deparser_tvalid),
   .m_axis_tdata              (axis_engine_to_deparser_tdata),
@@ -214,8 +220,8 @@ replication_engine #(
   .m_axis_tlast              (axis_engine_to_deparser_tlast),
   .m_axis_tready             (axis_engine_to_deparser_tready),
 
-  .metadata_out              (replication_metadata_out),
-  .metadata_out_valid        (replication_metadata_out_valid),
+  .metadata_out              (rep2deparser_meta),
+  .metadata_out_valid        (rep2deparser_meta_valid),
 
   .s_axis_mem_tvalid         (axis_memory_to_engine_tvalid),
   .s_axis_mem_tdata          (axis_memory_to_engine_tdata),
@@ -223,8 +229,8 @@ replication_engine #(
   .s_axis_mem_tlast          (axis_memory_to_engine_tlast),
   .s_axis_mem_tready         (axis_memory_to_engine_tready),
 
-  .metadata_mem_in           (memory_metadata_out),
-  .metadata_mem_in_valid     (memory_metadata_out_valid),
+  .metadata_mem_in           (hash2rep_meta),
+  .metadata_mem_in_valid     (hash2rep_meta_valid),
 
   .m_axis_mem_tvalid         (axis_engine_to_memory_tvalid),
   .m_axis_mem_tdata          (axis_engine_to_memory_tdata),
@@ -232,8 +238,9 @@ replication_engine #(
   .m_axis_mem_tlast          (axis_engine_to_memory_tlast),
   .m_axis_mem_tready         (axis_engine_to_memory_tready),
 
-  .metadata_mem_out          (memory_metadata_in),
-  .metadata_mem_out_valid    (memory_metadata_in_valid),
+  .metadata_mem_out          (rep2hash_meta),
+  .metadata_mem_out_valid    (rep2hash_meta_valid),
+  .metadata_mem_out_ready    (rep2hash_meta_ready),
 
   .is_leader                 (is_leader)
 );
@@ -272,8 +279,8 @@ election_engine #(
   .s_axil_rresp              (s_axil_rresp),
   .s_axil_rready             (s_axil_rready),
 
-  .metadata_in               (metadata_in),
-  .metadata_in_valid         (metadata_in_valid),
+  .metadata_in               (parser2rep_meta),
+  .metadata_in_valid         (parser2rep_meta_valid),
 
   .metadata_out              (election_metadata_out),
   .metadata_out_valid        (election_metadata_out_valid),
@@ -281,7 +288,8 @@ election_engine #(
   .is_leader                 (is_leader)
 );
 
-cuckoo_hash #(
+
+hash_engine_pipe #(
   .DATA_WIDTH                (512),
   .BUCKET_SIZE               (BUCKET_SIZE),
   .NUM_FUNCTIONS             (NUM_HASHES),
@@ -330,8 +338,9 @@ cuckoo_hash #(
   .s_axis_tlast              (axis_engine_to_memory_tlast),
   .s_axis_tvalid             (axis_engine_to_memory_tvalid),
 
-  .metadata_in               (memory_metadata_in),
-  .metadata_in_valid         (memory_metadata_in_valid),
+  .metadata_in               (rep2hash_meta),
+  .metadata_in_valid         (rep2hash_meta_valid),
+  .metadata_in_ready         (rep2hash_meta_ready),
 
   .m_axis_tready             (axis_memory_to_engine_tready),
   .m_axis_tdata              (axis_memory_to_engine_tdata),
@@ -339,8 +348,8 @@ cuckoo_hash #(
   .m_axis_tlast              (axis_memory_to_engine_tlast),
   .m_axis_tvalid             (axis_memory_to_engine_tvalid),
 
-  .metadata_out              (memory_metadata_out),
-  .metadata_out_valid        (memory_metadata_out_valid),
+  .metadata_out              (hash2rep_meta),
+  .metadata_out_valid        (hash2rep_meta_valid),
 
   .s_axis_dm_tvalid          (s_axis_dm_tvalid),
   .s_axis_dm_tdata           (s_axis_dm_tdata),

@@ -51,6 +51,7 @@ module replication_engine #(
 
   output st_metadata            metadata_mem_out,
   output logic                  metadata_mem_out_valid,
+  input  logic                  metadata_mem_out_ready,
 
   input  logic                  is_leader
 );
@@ -222,6 +223,9 @@ logic                  metadata_mem_out_valid_reg;
 
 always_ff @(posedge axis_clk) begin
     metadata_mem_out <= metadata_mem_out_reg;
+    if (metadata_mem_out_valid && metadata_mem_out_ready) begin
+        metadata_mem_out_valid <= '0;
+    end
     metadata_mem_out_valid <= metadata_mem_out_valid_reg;
 end
 
@@ -720,7 +724,7 @@ xpm_fifo_sync #(
   .READ_DATA_WIDTH     (DATA_WIDTH + KEEP_WIDTH + 1),
   .READ_MODE           ("fwft"),
   .WRITE_DATA_WIDTH    (DATA_WIDTH + KEEP_WIDTH + 1)
-) mem_fifo (
+  ) mem_fifo (
   .wr_en               (s_axis_mem_tvalid),
   .din                 ({s_axis_mem_tdata, s_axis_mem_tkeep, s_axis_mem_tlast}),
   .wr_ack              (),

@@ -15,7 +15,8 @@ typedef enum logic [7:0] {
   VOTE_REQUEST      = 8'h08,
   VOTE              = 8'h09,
   SWAP_READ         = 8'h0A,
-  SWAP_WRITE        = 8'h0B
+  SWAP_WRITE        = 8'h0B,
+  OUT_OF_MEM        = 8'h0C
 } opcode_e;
 
 typedef struct packed {
