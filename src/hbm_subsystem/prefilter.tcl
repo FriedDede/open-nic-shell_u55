@@ -428,8 +428,8 @@ proc create_root_design { parentCell } {
   set system_ila_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 system_ila_0 ]
   set_property -dict [list \
     CONFIG.C_DATA_DEPTH {1024} \
-    CONFIG.C_NUM_MONITOR_SLOTS {2} \
-    CONFIG.C_SLOT {1} \
+    CONFIG.C_NUM_MONITOR_SLOTS {1} \
+    CONFIG.C_SLOT {0} \
     CONFIG.C_SLOT_0_MAX_RD_BURSTS {4} \
     CONFIG.C_SLOT_0_MAX_WR_BURSTS {4} \
   ] $system_ila_0
@@ -437,24 +437,29 @@ proc create_root_design { parentCell } {
 
   # Create instance: smartconnect_0, and set properties
   set smartconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_0 ]
-  set_property CONFIG.NUM_SI {5} $smartconnect_0
+  set_property CONFIG.NUM_SI {4} $smartconnect_0
 
+
+  # Create instance: smartconnect_1, and set properties
+  set smartconnect_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_1 ]
+
+  set_property -dict [ list CONFIG.ADVANCED_PROPERTIES {__view__ {functional {S01_Entry {PRIORITY_ARB 1}}}} ] [get_bd_cells $smartconnect_1]
 
   # Create interface connections
   connect_bd_intf_net -intf_net S_AXIS_MM2S_CMD_0_1 [get_bd_intf_ports s_axis_dm_mm2s_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_MM2S_CMD]
   connect_bd_intf_net -intf_net S_AXIS_S2MM_0_1 [get_bd_intf_ports s_axis_dm_s2mm] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM]
   connect_bd_intf_net -intf_net S_AXIS_S2MM_CMD_0_1 [get_bd_intf_ports s_axis_dm_s2mm_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM_CMD]
-  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI [get_bd_intf_pins smartconnect_0/S00_AXI] [get_bd_intf_pins axi_datamover_0/M_AXI]
-connect_bd_intf_net -intf_net [get_bd_intf_nets axi_datamover_0_M_AXI] [get_bd_intf_pins smartconnect_0/S00_AXI] [get_bd_intf_pins system_ila_0/SLOT_1_AXI]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI [get_bd_intf_pins axi_datamover_0/M_AXI] [get_bd_intf_pins smartconnect_1/S01_AXI]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S [get_bd_intf_ports m_axis_dm_mm2s] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S_STS [get_bd_intf_ports m_axis_dm_mm2s_status] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S_STS]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_S2MM_STS [get_bd_intf_ports m_axis_dm_s2mm_status] [get_bd_intf_pins axi_datamover_0/M_AXIS_S2MM_STS]
-  connect_bd_intf_net -intf_net s_axi_0_1 [get_bd_intf_ports s_axi_0] [get_bd_intf_pins smartconnect_0/S01_AXI]
-  connect_bd_intf_net -intf_net s_axi_1_1 [get_bd_intf_ports s_axi_1] [get_bd_intf_pins smartconnect_0/S02_AXI]
-  connect_bd_intf_net -intf_net s_axi_2_1 [get_bd_intf_ports s_axi_2] [get_bd_intf_pins smartconnect_0/S04_AXI]
-  connect_bd_intf_net -intf_net s_axi_3_1 [get_bd_intf_ports s_axi_3] [get_bd_intf_pins smartconnect_0/S03_AXI]
-  connect_bd_intf_net -intf_net smartconnect_3_M00_AXI [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins smartconnect_0/M00_AXI]
-connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_3_M00_AXI] [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
+  connect_bd_intf_net -intf_net s_axi_0_1 [get_bd_intf_ports s_axi_0] [get_bd_intf_pins smartconnect_0/S00_AXI]
+  connect_bd_intf_net -intf_net s_axi_1_1 [get_bd_intf_ports s_axi_1] [get_bd_intf_pins smartconnect_0/S01_AXI]
+  connect_bd_intf_net -intf_net s_axi_2_1 [get_bd_intf_ports s_axi_2] [get_bd_intf_pins smartconnect_0/S03_AXI]
+  connect_bd_intf_net -intf_net s_axi_3_1 [get_bd_intf_ports s_axi_3] [get_bd_intf_pins smartconnect_0/S02_AXI]
+  connect_bd_intf_net -intf_net smartconnect_0_M00_AXI [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins smartconnect_1/S00_AXI]
+  connect_bd_intf_net -intf_net smartconnect_1_M00_AXI [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins smartconnect_1/M00_AXI]
+connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_1_M00_AXI] [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
 
   # Create port connections
   connect_bd_net -net aclk_0_1  [get_bd_ports axi_clk] \
@@ -463,14 +468,16 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_3_M00_AXI] [get_bd_
   [get_bd_pins axi_datamover_0/m_axi_s2mm_aclk] \
   [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_awclk] \
   [get_bd_pins system_ila_0/clk] \
-  [get_bd_pins smartconnect_0/aclk]
+  [get_bd_pins smartconnect_0/aclk] \
+  [get_bd_pins smartconnect_1/aclk]
   connect_bd_net -net axi_aresetn_0  [get_bd_ports axi_resetn] \
   [get_bd_pins axi_datamover_0/m_axi_mm2s_aresetn] \
   [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_aresetn] \
   [get_bd_pins axi_datamover_0/m_axi_s2mm_aresetn] \
   [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aresetn] \
   [get_bd_pins system_ila_0/resetn] \
-  [get_bd_pins smartconnect_0/aresetn]
+  [get_bd_pins smartconnect_0/aresetn] \
+  [get_bd_pins smartconnect_1/aresetn]
 
   # Create address segments
   assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces axi_datamover_0/Data] [get_bd_addr_segs M00_AXI_0/Reg] -force

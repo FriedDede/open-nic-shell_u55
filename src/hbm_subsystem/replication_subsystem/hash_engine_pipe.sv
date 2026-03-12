@@ -332,9 +332,9 @@ module hash_engine_pipe # (
         end
     end
 
-    for (genvar i = 0; i < NUM_FUNCTIONS; i++) generate
+    for (genvar i = 0; i < NUM_FUNCTIONS; i++) begin
       assign m_axi_arvalid[i] = ar_valid_reg[i];   
-    endgenerate
+    end
   
   logic stage1_fifo_empty, stage1_fifo_rd_en;
   stage1_data_t stage1_dout;

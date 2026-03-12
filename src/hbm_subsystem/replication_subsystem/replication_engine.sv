@@ -223,9 +223,6 @@ logic                  metadata_mem_out_valid_reg;
 
 always_ff @(posedge axis_clk) begin
     metadata_mem_out <= metadata_mem_out_reg;
-    if (metadata_mem_out_valid && metadata_mem_out_ready) begin
-        metadata_mem_out_valid <= '0;
-    end
     metadata_mem_out_valid <= metadata_mem_out_valid_reg;
 end
 
@@ -339,14 +336,11 @@ always_comb begin
       if (!net_meta_empty) begin
         case (net_meta_out.opcode)
           READ: begin
-            m_axis_mem_tvalid_reg = 1'b1;
-            m_axis_mem_tdata_reg  = '0;
-            m_axis_mem_tkeep_reg  = '0;
-            m_axis_mem_tlast_reg  = 1'b1;
-
+            // for read just pass command to the engine
             metadata_mem_out_valid_reg = 1'b1;
             metadata_mem_out_reg       = net_meta_out;
-            if (m_axis_mem_tready_reg)
+
+            if (metadata_mem_out_valid_reg)
               net_meta_rd_en = 1'b1;
           end
           WRITE: begin
@@ -365,7 +359,7 @@ always_comb begin
             metadata_mem_out_valid_reg = 1'b1;
             metadata_mem_out_reg       = net_meta_out;
 
-            if (m_axis_mem_tready_reg) begin
+            if (metadata_mem_out_valid_reg) begin
               
               if (is_leader) begin
                 net_state_next      = WRITE_REP;
@@ -792,106 +786,106 @@ xpm_fifo_sync #(
 );
 
 
-`ifdef __simulation__
-  integer log_fd;
-
-  initial begin
-    string filename;
-    $sformat(filename, "replication_engine_%0d.log", THREAD);
-    log_fd = $fopen(filename, "w");
-
-    $fmonitor(log_fd, "[%t] [HT: %d] REPL_ENGINE METADATA_MEM_OUT_REG:\n net_state=%p, mem_state=%p, ack_id=%d, rep_read_cnt=%d, rep_write_ptr=%d, nodes_count=%d, metadata_sent=%b, out_busy=%b, memory_delay=%d, tag_written=%b, table_index=%d\n 
-    metadata_out_valid_reg=%b, metadata_out_reg=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
-    metadata_mem_out_valid_reg=%b, metadata_mem_out_reg=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
-    net_meta_out=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), net_meta_empty=%b\n 
-    mem_meta_out=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), mem_meta_empty=%b\n 
-    metadata_in_valid=%b, metadata_in=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
-    metadata_mem_in_valid=%b, metadata_mem_in=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n
-    num_nodes=%d\n
-    ack_table_write=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)\n
-    ack_table_read=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)\n
-    ack_table_read_tmp=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)", 
-                $time, 
-                THREAD, 
-                net_state, 
-                mem_state, 
-                ack_id, 
-                rep_read_cnt, 
-                rep_write_ptr, 
-                nodes_count, 
-                metadata_sent, 
-                out_busy, 
-                memory_delay, 
-                tag_written, 
-                table_index,
-                metadata_out_valid_reg,
-                metadata_out_reg.opcode,
-                metadata_out_reg.index,
-                metadata_out_reg.key,
-                metadata_out_reg.ip,
-                metadata_out_reg.mac,
-                metadata_mem_out_valid_reg,
-                metadata_mem_out_reg.opcode,
-                metadata_mem_out_reg.index,
-                metadata_mem_out_reg.key,
-                metadata_mem_out_reg.ip,
-                metadata_mem_out_reg.mac,
-                net_meta_out.opcode,
-                net_meta_out.index,
-                net_meta_out.key,
-                net_meta_out.ip,
-                net_meta_out.mac,
-                net_meta_empty,
-                mem_meta_out.opcode,
-                mem_meta_out.index,
-                mem_meta_out.key,
-                mem_meta_out.ip,
-                mem_meta_out.mac,
-                mem_meta_empty,
-                metadata_in_valid,
-                metadata_in.opcode,
-                metadata_in.index,
-                metadata_in.key,
-                metadata_in.ip,
-                metadata_in.mac,
-                metadata_mem_in_valid,
-                metadata_mem_in.opcode,
-                metadata_mem_in.index,
-                metadata_mem_in.key,
-                metadata_mem_in.ip,
-                metadata_mem_in.mac,
-                num_nodes,
-                ack_table_write.meta.opcode,
-                ack_table_write.meta.index,
-                ack_table_write.meta.key,
-                ack_table_write.meta.ip,
-                ack_table_write.meta.mac,
-                ack_table_write.index,
-                ack_table_write.count,
-                ack_table_write.is_running,
-                ack_table_read.meta.opcode,
-                ack_table_read.meta.index,
-                ack_table_read.meta.key,
-                ack_table_read.meta.ip,
-                ack_table_read.meta.mac,
-                ack_table_read.index,
-                ack_table_read.count,
-                ack_table_read.is_running,
-                ack_table_read_tmp.meta.opcode,
-                ack_table_read_tmp.meta.index,
-                ack_table_read_tmp.meta.key,
-                ack_table_read_tmp.meta.ip,
-                ack_table_read_tmp.meta.mac,
-                ack_table_read_tmp.index,
-                ack_table_read_tmp.count,
-                ack_table_read_tmp.is_running);
-  end
-
-
-
-  final begin
-    if (log_fd) $fclose(log_fd);
-  end
+`ifdef __simulation_log_rep__
+//   integer log_fd;
+// 
+//   initial begin
+//     string filename;
+//     $sformat(filename, "replication_engine_%0d.log", THREAD);
+//     log_fd = $fopen(filename, "w");
+// 
+//     $fmonitor(log_fd, "[%t] [HT: %d] REPL_ENGINE METADATA_MEM_OUT_REG:\n net_state=%p, mem_state=%p, ack_id=%d, rep_read_cnt=%d, rep_write_ptr=%d, nodes_count=%d, metadata_sent=%b, out_busy=%b, memory_delay=%d, tag_written=%b, table_index=%d\n 
+//     metadata_out_valid_reg=%b, metadata_out_reg=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
+//     metadata_mem_out_valid_reg=%b, metadata_mem_out_reg=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
+//     net_meta_out=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), net_meta_empty=%b\n 
+//     mem_meta_out=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), mem_meta_empty=%b\n 
+//     metadata_in_valid=%b, metadata_in=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n 
+//     metadata_mem_in_valid=%b, metadata_mem_in=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h)\n
+//     num_nodes=%d\n
+//     ack_table_write=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)\n
+//     ack_table_read=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)\n
+//     ack_table_read_tmp=(meta=(opcode=%d, index=%d, key=%h, ip=%h, mac=%h), index=%d, count=%d, is_running=%b)", 
+//                 $time, 
+//                 THREAD, 
+//                 net_state, 
+//                 mem_state, 
+//                 ack_id, 
+//                 rep_read_cnt, 
+//                 rep_write_ptr, 
+//                 nodes_count, 
+//                 metadata_sent, 
+//                 out_busy, 
+//                 memory_delay, 
+//                 tag_written, 
+//                 table_index,
+//                 metadata_out_valid_reg,
+//                 metadata_out_reg.opcode,
+//                 metadata_out_reg.index,
+//                 metadata_out_reg.key,
+//                 metadata_out_reg.ip,
+//                 metadata_out_reg.mac,
+//                 metadata_mem_out_valid_reg,
+//                 metadata_mem_out_reg.opcode,
+//                 metadata_mem_out_reg.index,
+//                 metadata_mem_out_reg.key,
+//                 metadata_mem_out_reg.ip,
+//                 metadata_mem_out_reg.mac,
+//                 net_meta_out.opcode,
+//                 net_meta_out.index,
+//                 net_meta_out.key,
+//                 net_meta_out.ip,
+//                 net_meta_out.mac,
+//                 net_meta_empty,
+//                 mem_meta_out.opcode,
+//                 mem_meta_out.index,
+//                 mem_meta_out.key,
+//                 mem_meta_out.ip,
+//                 mem_meta_out.mac,
+//                 mem_meta_empty,
+//                 metadata_in_valid,
+//                 metadata_in.opcode,
+//                 metadata_in.index,
+//                 metadata_in.key,
+//                 metadata_in.ip,
+//                 metadata_in.mac,
+//                 metadata_mem_in_valid,
+//                 metadata_mem_in.opcode,
+//                 metadata_mem_in.index,
+//                 metadata_mem_in.key,
+//                 metadata_mem_in.ip,
+//                 metadata_mem_in.mac,
+//                 num_nodes,
+//                 ack_table_write.meta.opcode,
+//                 ack_table_write.meta.index,
+//                 ack_table_write.meta.key,
+//                 ack_table_write.meta.ip,
+//                 ack_table_write.meta.mac,
+//                 ack_table_write.index,
+//                 ack_table_write.count,
+//                 ack_table_write.is_running,
+//                 ack_table_read.meta.opcode,
+//                 ack_table_read.meta.index,
+//                 ack_table_read.meta.key,
+//                 ack_table_read.meta.ip,
+//                 ack_table_read.meta.mac,
+//                 ack_table_read.index,
+//                 ack_table_read.count,
+//                 ack_table_read.is_running,
+//                 ack_table_read_tmp.meta.opcode,
+//                 ack_table_read_tmp.meta.index,
+//                 ack_table_read_tmp.meta.key,
+//                 ack_table_read_tmp.meta.ip,
+//                 ack_table_read_tmp.meta.mac,
+//                 ack_table_read_tmp.index,
+//                 ack_table_read_tmp.count,
+//                 ack_table_read_tmp.is_running);
+//   end
+//
+//
+//
+//  final begin
+//    if (log_fd) $fclose(log_fd);
+//  end
 
   // Monitor m_axis_mem interface (Memory controller write)
   always @(posedge axis_clk) begin

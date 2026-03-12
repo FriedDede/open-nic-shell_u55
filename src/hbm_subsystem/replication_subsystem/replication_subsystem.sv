@@ -288,12 +288,11 @@ election_engine #(
   .is_leader                 (is_leader)
 );
 
-
-hash_engine_pipe #(
+// cuckoo_hash #(
+ hash_engine_pipe_simple #(
   .DATA_WIDTH                (512),
   .BUCKET_SIZE               (BUCKET_SIZE),
   .NUM_FUNCTIONS             (NUM_HASHES),
-  .MAX_KICKS                 (4),
   .HASH_MATRIX               (HASH_MATRIX)
 ) cuckoo_hash_inst (
   .m_axi_araddr              (m_axi_araddr),

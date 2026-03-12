@@ -1169,50 +1169,50 @@ hbm_interface_wrapper i_hbm(
   // Debug Monitors
   // --------------------------------------------------------------------------------
 
-  // 1. QDMA H2C Interface (from Host to Card)
-  always @(posedge axis_aclk) begin
-    if (s_axis_qdma_h2c_tvalid && s_axis_qdma_h2c_tready) begin
-      $strobe("[%t] KVS_SUBSYS QDMA_H2C (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
-              $time, s_axis_qdma_h2c_tdata, s_axis_qdma_h2c_tkeep, s_axis_qdma_h2c_tlast, 
-              s_axis_qdma_h2c_tuser_size, s_axis_qdma_h2c_tuser_src, s_axis_qdma_h2c_tuser_dst);
-    end
-  end
-
-  // 2. QDMA C2H Interface (from Card to Host)
-  always @(posedge axis_aclk) begin
-    if (m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS QDMA_C2H (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
-              $time, m_axis_qdma_c2h_tdata, m_axis_qdma_c2h_tkeep, m_axis_qdma_c2h_tlast,
-              m_axis_qdma_c2h_tuser_size, m_axis_qdma_c2h_tuser_src, m_axis_qdma_c2h_tuser_dst);
-    end
-  end
-
-  // 3. CMAC H2C Interface (from Network to Card - filtered output to shell if any)
-  always @(posedge axis_aclk) begin
-    if (m_axis_cmac_h2c_tvalid && m_axis_cmac_h2c_tready) begin
-      $strobe("[%t] KVS_SUBSYS CMAC_H2C (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
-              $time, m_axis_cmac_h2c_tdata, m_axis_cmac_h2c_tkeep, m_axis_cmac_h2c_tlast,
-              m_axis_cmac_h2c_tuser_size, m_axis_cmac_h2c_tuser_src, m_axis_cmac_h2c_tuser_dst);
-    end
-  end
-
-  // 4. CMAC C2H Interface (from Card to Network - incoming packets)
-  always @(posedge axis_aclk) begin
-    if (s_axis_cmac_c2h_tvalid && s_axis_cmac_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS CMAC_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
-              $time, s_axis_cmac_c2h_tdata, s_axis_cmac_c2h_tkeep, s_axis_cmac_c2h_tlast,
-              s_axis_cmac_c2h_tuser_size, s_axis_cmac_c2h_tuser_src, s_axis_cmac_c2h_tuser_dst);
-    end
-  end
-
-  // 4. CMAC C2H REG Interface (from Card to Network - incoming packets)
-  always @(posedge axis_aclk) begin
-    if (reg_axis_cmac_c2h_tvalid && reg_axis_cmac_c2h_tready) begin
-      $strobe("[%t] KVS_SUBSYS REG_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
-              $time, reg_axis_cmac_c2h_tdata, reg_axis_cmac_c2h_tkeep, reg_axis_cmac_c2h_tlast,
-              reg_axis_cmac_c2h_tuser_size, reg_axis_cmac_c2h_tuser_src, reg_axis_cmac_c2h_tuser_dst);
-    end
-  end
+//  // 1. QDMA H2C Interface (from Host to Card)
+//  always @(posedge axis_aclk) begin
+//    if (s_axis_qdma_h2c_tvalid && s_axis_qdma_h2c_tready) begin
+//      $strobe("[%t] KVS_SUBSYS QDMA_H2C (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+//              $time, s_axis_qdma_h2c_tdata, s_axis_qdma_h2c_tkeep, s_axis_qdma_h2c_tlast, 
+//              s_axis_qdma_h2c_tuser_size, s_axis_qdma_h2c_tuser_src, s_axis_qdma_h2c_tuser_dst);
+//    end
+//  end
+//
+//  // 2. QDMA C2H Interface (from Card to Host)
+//  always @(posedge axis_aclk) begin
+//    if (m_axis_qdma_c2h_tvalid && m_axis_qdma_c2h_tready) begin
+//      $strobe("[%t] KVS_SUBSYS QDMA_C2H (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+//              $time, m_axis_qdma_c2h_tdata, m_axis_qdma_c2h_tkeep, m_axis_qdma_c2h_tlast,
+//              m_axis_qdma_c2h_tuser_size, m_axis_qdma_c2h_tuser_src, m_axis_qdma_c2h_tuser_dst);
+//    end
+//  end
+//
+//  // 3. CMAC H2C Interface (from Network to Card - filtered output to shell if any)
+//  always @(posedge axis_aclk) begin
+//    if (m_axis_cmac_h2c_tvalid && m_axis_cmac_h2c_tready) begin
+//      $strobe("[%t] KVS_SUBSYS CMAC_H2C (OUT): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+//              $time, m_axis_cmac_h2c_tdata, m_axis_cmac_h2c_tkeep, m_axis_cmac_h2c_tlast,
+//              m_axis_cmac_h2c_tuser_size, m_axis_cmac_h2c_tuser_src, m_axis_cmac_h2c_tuser_dst);
+//    end
+//  end
+//
+//  // 4. CMAC C2H Interface (from Card to Network - incoming packets)
+//  always @(posedge axis_aclk) begin
+//    if (s_axis_cmac_c2h_tvalid && s_axis_cmac_c2h_tready) begin
+//      $strobe("[%t] KVS_SUBSYS CMAC_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+//              $time, s_axis_cmac_c2h_tdata, s_axis_cmac_c2h_tkeep, s_axis_cmac_c2h_tlast,
+//              s_axis_cmac_c2h_tuser_size, s_axis_cmac_c2h_tuser_src, s_axis_cmac_c2h_tuser_dst);
+//    end
+//  end
+//
+//  // 4. CMAC C2H REG Interface (from Card to Network - incoming packets)
+//  always @(posedge axis_aclk) begin
+//    if (reg_axis_cmac_c2h_tvalid && reg_axis_cmac_c2h_tready) begin
+//      $strobe("[%t] KVS_SUBSYS REG_C2H (IN): data=0x%h, keep=0x%h, last=%b, size=%d, src=%d, dst=%d", 
+//              $time, reg_axis_cmac_c2h_tdata, reg_axis_cmac_c2h_tkeep, reg_axis_cmac_c2h_tlast,
+//              reg_axis_cmac_c2h_tuser_size, reg_axis_cmac_c2h_tuser_src, reg_axis_cmac_c2h_tuser_dst);
+//    end
+//  end
 
   // 5. DataMover Read Interface (from HBM via datamover)
   always @(posedge axis_aclk) begin
@@ -1230,37 +1230,37 @@ hbm_interface_wrapper i_hbm(
     end
   end
 
-  // 7. Internal: Parser to Filter
-  always @(posedge axis_aclk) begin
-    if (axis_parser_to_filter_tvalid && axis_parser_to_filter_tready) begin
-      $strobe("[%t] KVS_SUBSYS PARSER->FILTER: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
-              $time, axis_parser_to_filter_tdata, axis_parser_to_filter_tkeep, axis_parser_to_filter_tlast, axis_parser_to_filter_tuser);
-    end
-  end
-
-  // 8. Internal: Filter to Replication
-  always @(posedge axis_aclk) begin
-    if (axis_filter_to_replication_tvalid && axis_filter_to_replication_tready) begin
-      $strobe("[%t] KVS_SUBSYS FILTER->REPL: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
-              $time, axis_filter_to_replication_tdata, axis_filter_to_replication_tkeep, axis_filter_to_replication_tlast, axis_filter_to_replication_tuser);
-    end
-  end
-
-  // 9. Internal: Replication to Deparser
-  always @(posedge axis_aclk) begin
-    if (axis_replication_to_deparser_tvalid && axis_replication_to_deparser_tready) begin
-      $strobe("[%t] KVS_SUBSYS REPL->DEPARSER: data=0x%h, keep=0x%h, last=%b", 
-              $time, axis_replication_to_deparser_tdata, axis_replication_to_deparser_tkeep, axis_replication_to_deparser_tlast);
-    end
-  end
-
-  // 10. Internal: Deparser to Arbiter
-  always @(posedge axis_aclk) begin
-    if (axis_deparser_to_arbiter_tvalid && axis_deparser_to_arbiter_tready) begin
-      $strobe("[%t] KVS_SUBSYS DEPARSER->ARBITER: data=0x%h, keep=0x%h, last=%b", 
-              $time, axis_deparser_to_arbiter_tdata, axis_deparser_to_arbiter_tkeep, axis_deparser_to_arbiter_tlast);
-    end
-  end
+//   // 7. Internal: Parser to Filter
+//   always @(posedge axis_aclk) begin
+//     if (axis_parser_to_filter_tvalid && axis_parser_to_filter_tready) begin
+//       $strobe("[%t] KVS_SUBSYS PARSER->FILTER: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
+//               $time, axis_parser_to_filter_tdata, axis_parser_to_filter_tkeep, axis_parser_to_filter_tlast, axis_parser_to_filter_tuser);
+//     end
+//   end
+// 
+//   // 8. Internal: Filter to Replication
+//   always @(posedge axis_aclk) begin
+//     if (axis_filter_to_replication_tvalid && axis_filter_to_replication_tready) begin
+//       $strobe("[%t] KVS_SUBSYS FILTER->REPL: data=0x%h, keep=0x%h, last=%b, user=0x%h", 
+//               $time, axis_filter_to_replication_tdata, axis_filter_to_replication_tkeep, axis_filter_to_replication_tlast, axis_filter_to_replication_tuser);
+//     end
+//   end
+// 
+//   // 9. Internal: Replication to Deparser
+//   always @(posedge axis_aclk) begin
+//     if (axis_replication_to_deparser_tvalid && axis_replication_to_deparser_tready) begin
+//       $strobe("[%t] KVS_SUBSYS REPL->DEPARSER: data=0x%h, keep=0x%h, last=%b", 
+//               $time, axis_replication_to_deparser_tdata, axis_replication_to_deparser_tkeep, axis_replication_to_deparser_tlast);
+//     end
+//   end
+// 
+//   // 10. Internal: Deparser to Arbiter
+//   always @(posedge axis_aclk) begin
+//     if (axis_deparser_to_arbiter_tvalid && axis_deparser_to_arbiter_tready) begin
+//       $strobe("[%t] KVS_SUBSYS DEPARSER->ARBITER: data=0x%h, keep=0x%h, last=%b", 
+//               $time, axis_deparser_to_arbiter_tdata, axis_deparser_to_arbiter_tkeep, axis_deparser_to_arbiter_tlast);
+//     end
+//   end
 
   // Metadata Monitors
   always @(posedge axis_aclk) begin
