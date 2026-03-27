@@ -84,13 +84,13 @@ module hash_engine_pipe_simple # (
   output logic                  m_axi_bready   [NUM_FUNCTIONS],
   input  logic            [1:0] m_axi_bresp    [NUM_FUNCTIONS],
   input  logic                  m_axi_bvalid   [NUM_FUNCTIONS],
-  input  logic          [255:0] m_axi_rdata    [NUM_FUNCTIONS],
+  input  logic          [127:0] m_axi_rdata    [NUM_FUNCTIONS],
   input  logic            [3:0] m_axi_rid      [NUM_FUNCTIONS],
   input  logic                  m_axi_rlast    [NUM_FUNCTIONS],
   output logic                  m_axi_rready   [NUM_FUNCTIONS],
   input  logic            [1:0] m_axi_rresp    [NUM_FUNCTIONS],
   input  logic                  m_axi_rvalid   [NUM_FUNCTIONS],
-  output logic          [255:0] m_axi_wdata    [NUM_FUNCTIONS],
+  output logic          [127:0] m_axi_wdata    [NUM_FUNCTIONS],
   output logic                  m_axi_wlast    [NUM_FUNCTIONS],
   input  logic                  m_axi_wready   [NUM_FUNCTIONS],
   output logic           [31:0] m_axi_wstrb    [NUM_FUNCTIONS],
@@ -101,8 +101,8 @@ module hash_engine_pipe_simple # (
   // Parameters & Config
   // -------------------------------------------------------------------------
   localparam int READ_FIFO_DEPTH     = 2 * BUCKET_SIZE * 8 / DATA_WIDTH;
-  localparam int WRITE_FIFO_DEPTH    = 64 * BUCKET_SIZE * 8 / DATA_WIDTH;
-  localparam int PIPELINE_FIFO_DEPTH = 128; 
+  localparam int WRITE_FIFO_DEPTH    = 128 * BUCKET_SIZE * 8 / DATA_WIDTH;
+  localparam int PIPELINE_FIFO_DEPTH = 256; 
 
   localparam int ADDRESS_SHIFT       = $clog2(BUCKET_SIZE);
   localparam logic [22:0] DM_BTT     = BUCKET_SIZE;
@@ -156,7 +156,7 @@ module hash_engine_pipe_simple # (
   endfunction
 
   // -------------------------------------------------------------------------
-  // Buffers (External Data to Internal Stream)
+  // Stage 0: Write payloads buffer, Read payloads buffer
   // -------------------------------------------------------------------------
   logic                  int_wr_tvalid, int_wr_tready, int_wr_tlast;
   logic [DATA_WIDTH-1:0] int_wr_tdata;
@@ -197,7 +197,7 @@ module hash_engine_pipe_simple # (
   );
 
   // -------------------------------------------------------------------------
-  // Pipeline Stage 0: Metadata Input buffer
+  // Stage 0: Metadata Input buffer
   // -------------------------------------------------------------------------
   logic s0_fifo_full, s0_fifo_wr_en;
   st_metadata s0_meta_buff_din;
@@ -219,7 +219,7 @@ module hash_engine_pipe_simple # (
   );
 
   // -------------------------------------------------------------------------
-  // Pipeline Stage 1: Hash Calculation & HBM Read Issue
+  // Stage 1: Hash Calculation & Key Read Issue
   // -------------------------------------------------------------------------
   logic s1_fifo_full, s1_fifo_wr_en;
   s1_data_t s1_buff_din;
@@ -231,7 +231,7 @@ module hash_engine_pipe_simple # (
   assign s0_fifo_rd_en = ~s1_fifo_full && ~(|ar_valid_reg);
   for (genvar i = 0; i < NUM_FUNCTIONS; i++) assign m_axi_arvalid[i] = ar_valid_reg[i];   
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin : s1_ff
     if (!rstn) begin
       ar_valid_reg  <= '0;
       s1_fifo_wr_en <= 1'b0;
@@ -258,7 +258,7 @@ module hash_engine_pipe_simple # (
             for (int i=0; i<NUM_FUNCTIONS; i++) if (m_axi_arready[i] && ar_valid_reg[i]) ar_valid_reg[i] <= 1'b0;
       end
     end
-  end
+  end : s1_ff
 
   xpm_fifo_sync #(
     .DOUT_RESET_VALUE("0"), .ECC_MODE("no_ecc"), .FIFO_MEMORY_TYPE("auto"),
@@ -270,7 +270,7 @@ module hash_engine_pipe_simple # (
   );
 
   // -------------------------------------------------------------------------
-  // Pipeline Stage 2: HBM Read Response & Split into Read/Write paths
+  // Stage 2: Key Read Response & Split into Read/Write paths
   // -------------------------------------------------------------------------
   logic [NUM_FUNCTIONS -1:0]  r_valid_reg ;
   logic [31:0]                r_dirty_reg [NUM_FUNCTIONS];
@@ -376,7 +376,7 @@ module hash_engine_pipe_simple # (
   );
 
   // -------------------------------------------------------------------------
-  // Stage 3 READ FSM: Pure Command Issuance for Reads
+  // Stage 3 READ ISSUE
   // -------------------------------------------------------------------------
 
   logic s3_rd_fifo_full, s3_rd_fifo_wr_en, s3_rd_fifo_empty, s3_rd_fifo_rd_en;
@@ -394,7 +394,7 @@ module hash_engine_pipe_simple # (
   logic s4_wr_meta_out_valid; // Forward declaration for arbiter
   logic s4_rd_meta_out_valid; // Forward declaration for arbiter
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin : s3_rd_ff
     if (!rstn) begin
       s3_rd_state <= S3_RD_IDLE;
       s3_rd_op    <= '0;
@@ -402,7 +402,7 @@ module hash_engine_pipe_simple # (
       s3_rd_state <= s3_rd_state_next;
       s3_rd_op    <= s3_rd_op_next;
     end
-  end
+  end : s3_rd_ff
 
   always_comb begin : s3_rd_fsm
     s3_rd_state_next          = s3_rd_state;
@@ -449,13 +449,13 @@ module hash_engine_pipe_simple # (
   end : s3_rd_fsm
 
   // -------------------------------------------------------------------------
-  // Stage 3 WRITE FSM: Pure Command Issuance for Writes/Sinks
+  // Stage 3 WRITE ISSUE
   // -------------------------------------------------------------------------
   typedef enum logic [1:0] { S3_WR_IDLE, S3_WR_CMD, S3_WR_SINK_CMD } s3_wr_state_e;
   s3_wr_state_e s3_wr_state, s3_wr_state_next;
   s2_data_t s3_wr_op, s3_wr_op_next;
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin : s3_wr_ff
     if (!rstn) begin
       s3_wr_state <= S3_WR_IDLE;
       s3_wr_op    <= '0;
@@ -463,8 +463,7 @@ module hash_engine_pipe_simple # (
       s3_wr_state <= s3_wr_state_next;
       s3_wr_op    <= s3_wr_op_next;
     end
-  end
-
+  end : s3_wr_ff
   always_comb begin : s3_wr_fsm
     s3_wr_state_next          = s3_wr_state;
     s3_wr_op_next             = s3_wr_op;
@@ -511,12 +510,26 @@ module hash_engine_pipe_simple # (
   // Inter-Stage Buffers (Stage 3 -> Stage 4)
   // -------------------------------------------------------------------------
 
-  xpm_fifo_sync #(.FIFO_WRITE_DEPTH(PIPELINE_FIFO_DEPTH), .WRITE_DATA_WIDTH($bits(s2_data_t)), .READ_DATA_WIDTH($bits(s2_data_t)), .READ_MODE("fwft")) s3_rd_fifo (
-    .wr_clk(clk), .rst(!rstn), .din(s3_rd_buff_din), .wr_en(s3_rd_fifo_wr_en), .full(s3_rd_fifo_full), .dout(s3_rd_buff_dout), .rd_en(s3_rd_fifo_rd_en), .empty(s3_rd_fifo_empty)
+  xpm_fifo_sync #(
+    .FIFO_WRITE_DEPTH(PIPELINE_FIFO_DEPTH), 
+    .WRITE_DATA_WIDTH($bits(s2_data_t)), 
+    .READ_DATA_WIDTH($bits(s2_data_t)), 
+    .READ_MODE("fwft")) s3_rd_fifo (
+    .wr_clk(clk), .rst(!rstn), .din(s3_rd_buff_din), 
+    .wr_en(s3_rd_fifo_wr_en), .full(s3_rd_fifo_full), 
+    .dout(s3_rd_buff_dout), .rd_en(s3_rd_fifo_rd_en), 
+    .empty(s3_rd_fifo_empty)
   );
 
-  xpm_fifo_sync #(.FIFO_WRITE_DEPTH(PIPELINE_FIFO_DEPTH), .WRITE_DATA_WIDTH($bits(s2_data_t)), .READ_DATA_WIDTH($bits(s2_data_t)), .READ_MODE("fwft")) s3_wr_fifo (
-    .wr_clk(clk), .rst(!rstn), .din(s3_wr_buff_din), .wr_en(s3_wr_fifo_wr_en), .full(s3_wr_fifo_full), .dout(s3_wr_buff_dout), .rd_en(s3_wr_fifo_rd_en), .empty(s3_wr_fifo_empty)
+  xpm_fifo_sync #(
+    .FIFO_WRITE_DEPTH(PIPELINE_FIFO_DEPTH), 
+    .WRITE_DATA_WIDTH($bits(s2_data_t)), 
+    .READ_DATA_WIDTH($bits(s2_data_t)), 
+    .READ_MODE("fwft")) s3_wr_fifo (
+    .wr_clk(clk), .rst(!rstn), .din(s3_wr_buff_din), 
+    .wr_en(s3_wr_fifo_wr_en), .full(s3_wr_fifo_full), 
+    .dout(s3_wr_buff_dout), .rd_en(s3_wr_fifo_rd_en), 
+    .empty(s3_wr_fifo_empty)
   );
 
   // -------------------------------------------------------------------------
@@ -528,7 +541,7 @@ module hash_engine_pipe_simple # (
   
   logic rd_stream_done, rd_stream_done_next;
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin : s4_rd_ff
     if (!rstn) begin
       s4_rd_state    <= S4_RD_IDLE;
       s4_rd_op       <= '0;
@@ -538,7 +551,7 @@ module hash_engine_pipe_simple # (
       s4_rd_op       <= s4_rd_op_next;
       rd_stream_done <= rd_stream_done_next;
     end
-  end
+  end : s4_rd_ff
 
   always_comb begin : s4_rd_fsm
     s4_rd_state_next     = s4_rd_state;
@@ -591,13 +604,13 @@ module hash_engine_pipe_simple # (
   end : s4_rd_fsm
 
   // -------------------------------------------------------------------------
-  // Stage 4 Write/Sink FSM: Write Buffer -> DataMover OR Void
+  // Stage 4 Write/Sink FSM: Write Buffer -> DataMover 
   // -------------------------------------------------------------------------
   typedef enum logic [1:0] { S4_WR_IDLE, S4_WR_DATA, S4_WR_SINK, S4_WR_DONE } stage4_wr_state_e;
   stage4_wr_state_e s4_wr_state, s4_wr_state_next;
   s2_data_t s4_wr_op, s4_wr_op_next;
 
-  always_ff @(posedge clk) begin
+  always_ff @(posedge clk) begin : s4_wr_ff
     if (!rstn) begin
       s4_wr_state <= S4_WR_IDLE;
       s4_wr_op    <= '0;
@@ -605,7 +618,7 @@ module hash_engine_pipe_simple # (
       s4_wr_state <= s4_wr_state_next;
       s4_wr_op    <= s4_wr_op_next;
     end
-  end
+  end : s4_wr_ff
 
   logic s4_wr_int_wr_tready;
 
@@ -840,9 +853,9 @@ module hash_engine_pipe_simple # (
     // Monitor Commands & AXI
     always @(posedge clk) begin
       if (m_axis_dm_mm2s_cmd_tvalid && m_axis_dm_mm2s_cmd_tready)
-        $display("[%t] CUCKOO [HT: %d] MM2S CMD: data=0x%h", $time, THREAD, m_axis_dm_mm2s_cmd_tdata);
+        $display("[%t] CUCKOO [HT: %d] MM2S CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_mm2s_cmd_tdata, {s3_rd_op.target_address, 10'h0});
       if (m_axis_dm_s2mm_cmd_tvalid && m_axis_dm_s2mm_cmd_tready)
-        $display("[%t] CUCKOO [HT: %d] S2MM CMD: data=0x%h", $time, THREAD, m_axis_dm_s2mm_cmd_tdata);
+        $display("[%t] CUCKOO [HT: %d] S2MM CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_s2mm_cmd_tdata, {s3_wr_op.target_address, 10'h0});
 
       for (int j = 0; j < NUM_FUNCTIONS; j++) begin
         if (m_axi_arvalid[j] && m_axi_arready[j])

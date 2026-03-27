@@ -381,13 +381,13 @@ logic   [3:0] axi_bid      [kvs_pkg::NUM_HASHES];
 logic         axi_bready   [kvs_pkg::NUM_HASHES];
 logic   [1:0] axi_bresp    [kvs_pkg::NUM_HASHES];
 logic         axi_bvalid   [kvs_pkg::NUM_HASHES];
-logic [255:0] axi_rdata    [kvs_pkg::NUM_HASHES];
+logic [127:0] axi_rdata    [kvs_pkg::NUM_HASHES];
 logic   [3:0] axi_rid      [kvs_pkg::NUM_HASHES];
 logic         axi_rlast    [kvs_pkg::NUM_HASHES];
 logic         axi_rready   [kvs_pkg::NUM_HASHES];
 logic   [1:0] axi_rresp    [kvs_pkg::NUM_HASHES];
 logic         axi_rvalid   [kvs_pkg::NUM_HASHES];
-logic [255:0] axi_wdata    [kvs_pkg::NUM_HASHES];
+logic [127:0] axi_wdata    [kvs_pkg::NUM_HASHES];
 logic         axi_wlast    [kvs_pkg::NUM_HASHES];
 logic         axi_wready   [kvs_pkg::NUM_HASHES];
 logic  [31:0] axi_wstrb    [kvs_pkg::NUM_HASHES];
@@ -697,10 +697,17 @@ assign m_axi_sys_mem_wuser  = '0;
 
 AXI_BUS #(
   .AXI_ADDR_WIDTH (cache_ss_pkg::AddrWidth),
-  .AXI_DATA_WIDTH (cache_ss_pkg::DataWidth),
+  .AXI_DATA_WIDTH (256),
   .AXI_ID_WIDTH   (cache_ss_pkg::IdWidth),
   .AXI_USER_WIDTH (0)
 ) axi_mm_cache_to_hbm[3:0]();
+
+AXI_BUS #(
+  .AXI_ADDR_WIDTH (cache_ss_pkg::AddrWidth),
+  .AXI_DATA_WIDTH (cache_ss_pkg::DataWidth),
+  .AXI_ID_WIDTH   (cache_ss_pkg::IdWidth),
+  .AXI_USER_WIDTH (0)
+) axi_dm_to_hbm();
 
 AXI_BUS #(
   .AXI_ADDR_WIDTH (cache_ss_pkg::AddrWidth),
@@ -720,7 +727,7 @@ prefilter_bd_wrapper i_pf(
     .M00_AXI_0_arqos 		(axi_mm_cache_to_hbm[0].ar_qos),
     .M00_AXI_0_arready	(axi_mm_cache_to_hbm[0].ar_ready),	
     .M00_AXI_0_arsize		(axi_mm_cache_to_hbm[0].ar_size),
-    .M00_AXI_0_aruser		(axi_mm_cache_to_hbm[0].ar_user),
+    //.M00_AXI_0_aruser		(axi_mm_cache_to_hbm[0].ar_user),
     .M00_AXI_0_arvalid	(axi_mm_cache_to_hbm[0].ar_valid),	
     .M00_AXI_0_awaddr		(axi_mm_cache_to_hbm[0].aw_addr),
     .M00_AXI_0_awburst	(axi_mm_cache_to_hbm[0].aw_burst),	
@@ -731,7 +738,7 @@ prefilter_bd_wrapper i_pf(
     .M00_AXI_0_awqos 		(axi_mm_cache_to_hbm[0].aw_qos),
     .M00_AXI_0_awready	(axi_mm_cache_to_hbm[0].aw_ready),	
     .M00_AXI_0_awsize		(axi_mm_cache_to_hbm[0].aw_size),
-    .M00_AXI_0_awuser		(axi_mm_cache_to_hbm[0].aw_user),
+    //.M00_AXI_0_awuser		(axi_mm_cache_to_hbm[0].aw_user),
     .M00_AXI_0_awvalid	(axi_mm_cache_to_hbm[0].aw_valid),	
     .M00_AXI_0_bready		(axi_mm_cache_to_hbm[0].b_ready),
     .M00_AXI_0_bresp 		(axi_mm_cache_to_hbm[0].b_resp),
@@ -746,6 +753,42 @@ prefilter_bd_wrapper i_pf(
     .M00_AXI_0_wready		(axi_mm_cache_to_hbm[0].w_ready),
     .M00_AXI_0_wstrb 		(axi_mm_cache_to_hbm[0].w_strb),
     .M00_AXI_0_wvalid		(axi_mm_cache_to_hbm[0].w_valid),
+
+    .M00_AXI_1_araddr		(axi_dm_to_hbm.ar_addr),
+    .M00_AXI_1_arburst	(axi_dm_to_hbm.ar_burst),	
+    .M00_AXI_1_arcache	(axi_dm_to_hbm.ar_cache),	
+    .M00_AXI_1_arlen 		(axi_dm_to_hbm.ar_len),
+    //.M00_AXI_1_arlock	(axi_dm_to_hbm.ar_lock),
+    .M00_AXI_1_arprot		(axi_dm_to_hbm.ar_prot),
+    //.M00_AXI_1_arqos 	(axi_dm_to_hbm.ar_qos),
+    .M00_AXI_1_arready	(axi_dm_to_hbm.ar_ready),	
+    .M00_AXI_1_arsize		(axi_dm_to_hbm.ar_size),
+    .M00_AXI_1_aruser		(axi_dm_to_hbm.ar_user),
+    .M00_AXI_1_arvalid	(axi_dm_to_hbm.ar_valid),	
+    .M00_AXI_1_awaddr		(axi_dm_to_hbm.aw_addr),
+    .M00_AXI_1_awburst	(axi_dm_to_hbm.aw_burst),	
+    .M00_AXI_1_awcache	(axi_dm_to_hbm.aw_cache),	
+    .M00_AXI_1_awlen 		(axi_dm_to_hbm.aw_len),
+    //.M00_AXI_1_awlock	(axi_dm_to_hbm.aw_lock),
+    .M00_AXI_1_awprot		(axi_dm_to_hbm.aw_prot),
+    //.M00_AXI_1_awqos 	(axi_dm_to_hbm.aw_qos),
+    .M00_AXI_1_awready	(axi_dm_to_hbm.aw_ready),	
+    .M00_AXI_1_awsize		(axi_dm_to_hbm.aw_size),
+    .M00_AXI_1_awuser		(axi_dm_to_hbm.aw_user),
+    .M00_AXI_1_awvalid	(axi_dm_to_hbm.aw_valid),	
+    .M00_AXI_1_bready		(axi_dm_to_hbm.b_ready),
+    .M00_AXI_1_bresp 		(axi_dm_to_hbm.b_resp),
+    .M00_AXI_1_bvalid		(axi_dm_to_hbm.b_valid),
+    .M00_AXI_1_rdata 		(axi_dm_to_hbm.r_data),
+    .M00_AXI_1_rlast 		(axi_dm_to_hbm.r_last),
+    .M00_AXI_1_rready		(axi_dm_to_hbm.r_ready),
+    .M00_AXI_1_rresp 		(axi_dm_to_hbm.r_resp),
+    .M00_AXI_1_rvalid		(axi_dm_to_hbm.r_valid),
+    .M00_AXI_1_wdata 		(axi_dm_to_hbm.w_data),
+    .M00_AXI_1_wlast 		(axi_dm_to_hbm.w_last),
+    .M00_AXI_1_wready		(axi_dm_to_hbm.w_ready),
+    .M00_AXI_1_wstrb 		(axi_dm_to_hbm.w_strb),
+    .M00_AXI_1_wvalid		(axi_dm_to_hbm.w_valid),
 
     .axi_clk(axis_aclk),
     .axi_resetn (rstn),
@@ -905,7 +948,8 @@ prefilter_bd_wrapper i_pf(
   .s_axi_3_wlast                   (axi_wlast[3]),
   .s_axi_3_wready                  (axi_wready[3]),
   .s_axi_3_wstrb                   (axi_wstrb[3]),
-  .s_axi_3_wvalid                  (axi_wvalid[3])
+  .s_axi_3_wvalid                  (axi_wvalid[3]),
+
 );
 
 /*
@@ -1087,10 +1131,16 @@ hbm_interface_wrapper i_hbm(
     .QDMA_AXI_wuser   (s_axi_wuser),
     .QDMA_AXI_wvalid  (s_axi_wvalid),
 
+    // KEY READS TO HBM
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S00,axi_mm_cache_to_hbm[0])
+
+    // UNUSED
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S01,axi_mm_cache_to_hbm[1])
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S02,axi_mm_cache_to_hbm[2])
     `AXI_ASSIGN_MASTER_BUS_TO_HBM(S03,axi_mm_cache_to_hbm[3])
+
+    // DM TO HBM
+    `AXI_ASSIGN_MASTER_BUS_TO_HBM(DM,axi_dm_to_hbm)
 
     .apb_complete_0_0  (apb_complete_0),
     .apb_complete_1_0  (),
