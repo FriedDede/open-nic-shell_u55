@@ -1,14 +1,16 @@
 import metadata_pkg::*;
 
 module hash_engine_pipe_simple # (
-  parameter int NUM_FUNCTIONS  = 4,
-  parameter int BUCKET_SIZE    = 1024,
-  parameter int DATA_WIDTH     = 512,
-  parameter int KEEP_WIDTH     = DATA_WIDTH / 8,
-  parameter int HASH_WIDTH     = 34 - $clog2(BUCKET_SIZE),
-  parameter int CMD_WIDTH      = 80,
-  parameter logic [HASH_WIDTH-1:0] HASH_MATRIX [NUM_FUNCTIONS][KEY_WIDTH-1:0] = '{default: '0},
-  parameter int          THREAD     = 0
+  parameter int NUM_FUNCTIONS         = 4,
+  parameter int BUCKET_SIZE           = 1024,
+  parameter int DATA_WIDTH            = 512,
+  parameter int KEEP_WIDTH            = DATA_WIDTH / 8,
+  parameter int HASH_WIDTH            = 33 - $clog2(BUCKET_SIZE),
+  parameter int HASH_MATRIX_WIDTH     = 34 - $clog2(BUCKET_SIZE),
+  parameter int CMD_WIDTH             = 80,
+  parameter logic [HASH_MATRIX_WIDTH-1:0] HASH_MATRIX [NUM_FUNCTIONS][KEY_WIDTH-1:0] = '{default: '0},
+  parameter int          THREAD       = 0,
+  parameter int KEY_MAP_SIZE = (8 * 1024 * 1024 * 1024) // (8 GB key hashmap)
 ) (
   input  logic clk,
   input  logic rstn,
@@ -104,8 +106,11 @@ module hash_engine_pipe_simple # (
   localparam int WRITE_FIFO_DEPTH    = 128 * BUCKET_SIZE * 8 / DATA_WIDTH;
   localparam int PIPELINE_FIFO_DEPTH = 256; 
 
-  localparam int ADDRESS_SHIFT       = $clog2(BUCKET_SIZE);
-  localparam logic [22:0] DM_BTT     = BUCKET_SIZE;
+  localparam int KEY_MAP_ADDR_WIDTH       = $clog2(KEY_MAP_SIZE); 
+  localparam int KEY_MAP_ADDRESS_SHIFT    = KEY_MAP_ADDR_WIDTH - HASH_WIDTH;
+
+  localparam int ADDRESS_SHIFT            = $clog2(BUCKET_SIZE);
+  localparam logic [22:0] DM_BTT          = BUCKET_SIZE;
 
   // -------------------------------------------------------------------------
   // Pipeline Structs 
@@ -119,6 +124,7 @@ module hash_engine_pipe_simple # (
     st_metadata meta;
     logic [HASH_WIDTH-1:0] target_address;
     logic invalid_target;
+    logic new_write;
   } s2_data_t;
 
   // -------------------------------------------------------------------------
@@ -126,7 +132,7 @@ module hash_engine_pipe_simple # (
   // -------------------------------------------------------------------------
   function automatic logic [HASH_WIDTH-1:0] hash (
     input logic  [KEY_WIDTH-1:0] key,
-    input logic [HASH_WIDTH-1:0] matrix [KEY_WIDTH-1:0]
+    input logic [HASH_MATRIX_WIDTH-1:0] matrix [KEY_WIDTH-1:0]
   );
     logic [HASH_WIDTH-1:0] accumulator = '0;
     for (int i = 0; i < KEY_WIDTH; i = i + 1)
@@ -140,12 +146,14 @@ module hash_engine_pipe_simple # (
     input  logic  [KEY_WIDTH-1:0] stored_keys [NUM_FUNCTIONS],
     input  logic [HASH_WIDTH-1:0] current_addresses [NUM_FUNCTIONS],
     input  logic  [KEY_WIDTH-1:0] current_key,
-    output logic [HASH_WIDTH-1:0] address
+    output logic [HASH_WIDTH-1:0] address,
+    output logic new_write
   );
     logic read_possible, write_possible;
     for (int i = 0; i < NUM_FUNCTIONS; i++) begin
       read_possible  = (stored_dirty[i] == VALID_TAG) && (stored_keys[i] == current_key);
       write_possible = (stored_dirty[i] != VALID_TAG) || (stored_keys[i] == current_key);
+      new_write = (stored_dirty[i] != VALID_TAG);
       if ((read_op && read_possible) || (!read_op && write_possible)) begin
         address = current_addresses[i];
         return 1'b1;
@@ -244,7 +252,8 @@ module hash_engine_pipe_simple # (
             s1_fifo_wr_en    <= 1'b1; 
 
             for (int i = 0; i < NUM_FUNCTIONS; i++) begin
-                m_axi_araddr[i]   <= hash(s0_meta_buff_dout.key, HASH_MATRIX[i]) << ADDRESS_SHIFT;
+                // Key map located in low side of HBM (1'b0) keys are as spread as possible 
+                m_axi_araddr[i]   <= hash(s0_meta_buff_dout.key, HASH_MATRIX[i]) << 10 ;
                 ar_valid_reg[i]   <= '1;
                 m_axi_arburst[i]  <= 2'b1; 
                 m_axi_arcache[i]  <= 4'b0; 
@@ -291,6 +300,7 @@ module hash_engine_pipe_simple # (
   logic s2_read_op;
   logic [HASH_WIDTH-1:0] s2_target_addr;
   logic s2_collision;
+  logic s2_new_write;
 
   logic s2_target_full;
   assign s2_target_full = s2_read_op ? s2_rd_fifo_full : s2_wr_fifo_full;
@@ -307,7 +317,7 @@ module hash_engine_pipe_simple # (
               if (m_axi_rvalid[i] && m_axi_rready[i]) begin
                 r_valid_reg[i] <= 1'b1;
                 r_dirty_reg[i] <= m_axi_rdata[i][31:0];
-                r_keys_reg[i]  <= {<< 8 {m_axi_rdata[i][32+:KEY_WIDTH]}};
+                r_keys_reg[i]  <= m_axi_rdata[i][32+:KEY_WIDTH];
               end
           end
       end
@@ -323,11 +333,13 @@ module hash_engine_pipe_simple # (
               s2_rd_buff_din.meta           <= s1_buff_dout.meta;
               s2_rd_buff_din.target_address <= s2_target_addr;
               s2_rd_buff_din.invalid_target <= s2_collision;
+              s2_rd_buff_din.new_write      <= '0;
               s2_rd_fifo_wr_en              <= 1'b1;
           end else begin
               s2_wr_buff_din.meta           <= s1_buff_dout.meta;
               s2_wr_buff_din.target_address <= s2_target_addr;
               s2_wr_buff_din.invalid_target <= s2_collision;
+              s2_wr_buff_din.new_write      <= s2_new_write;
               s2_wr_fifo_wr_en              <= 1'b1;
           end
       end
@@ -341,7 +353,7 @@ module hash_engine_pipe_simple # (
     s2_read_op = (s1_buff_dout.meta.opcode == metadata_pkg::READ);
     for (int i = 0; i < NUM_FUNCTIONS; i++) current_addresses[i] = s1_buff_dout.addresses[i];
     
-    if (no_collisions(s2_read_op, r_dirty_reg, r_keys_reg, current_addresses, s1_buff_dout.meta.key, s2_target_addr)) begin
+    if (no_collisions(s2_read_op, r_dirty_reg, r_keys_reg, current_addresses, s1_buff_dout.meta.key, s2_target_addr, s2_new_write)) begin
       s2_collision = 1'b0;
     end else begin
       s2_collision = 1'b1; 
@@ -350,7 +362,7 @@ module hash_engine_pipe_simple # (
   end : s2_comb
   
   always_comb begin : s2_rready
-    for (int i = 0; i < NUM_FUNCTIONS; i++) m_axi_rready[i] = (all_reads_returned || s2_target_full) ? 1'b0 : 1'b1; 
+    for (int i = 0; i < NUM_FUNCTIONS; i++) m_axi_rready[i] = (r_valid_reg[i] || s2_target_full) ? 1'b0 : 1'b1; 
   end : s2_rready
 
   // -------------------------------------------------------------------------
@@ -410,7 +422,8 @@ module hash_engine_pipe_simple # (
     s2_rd_fifo_rd_en          = 1'b0;
     
     m_axis_dm_mm2s_cmd_tvalid = 1'b0;
-    m_axis_dm_mm2s_cmd_tdata  = {8'b0, 6'b0, s3_rd_op.target_address, 10'h0, 1'b0, 1'b1, 6'b0, 1'b1, DM_BTT};
+    //                                  HBM HIGH SIDE (1'b1) + 23 bit target_address + 10 bit size padding
+    m_axis_dm_mm2s_cmd_tdata  = {8'b0, 6'b0, {1'b1 , s3_rd_op.target_address, 10'h0 }, 1'b0, 1'b1, 6'b0, 1'b1, DM_BTT};
     
     s3_rd_fifo_wr_en          = 1'b0; 
     s3_rd_buff_din            = s3_rd_op;
@@ -451,7 +464,7 @@ module hash_engine_pipe_simple # (
   // -------------------------------------------------------------------------
   // Stage 3 WRITE ISSUE
   // -------------------------------------------------------------------------
-  typedef enum logic [1:0] { S3_WR_IDLE, S3_WR_CMD, S3_WR_SINK_CMD } s3_wr_state_e;
+  typedef enum logic [2:0] { S3_WR_IDLE, S3_WR_CMD, S3_WR_KEY, S3_WAIT_B_KEY, S3_WAIT_W_KEY, S3_WR_SINK_CMD } s3_wr_state_e;
   s3_wr_state_e s3_wr_state, s3_wr_state_next;
   s2_data_t s3_wr_op, s3_wr_op_next;
 
@@ -464,14 +477,35 @@ module hash_engine_pipe_simple # (
       s3_wr_op    <= s3_wr_op_next;
     end
   end : s3_wr_ff
+
   always_comb begin : s3_wr_fsm
     s3_wr_state_next          = s3_wr_state;
     s3_wr_op_next             = s3_wr_op;
     s2_wr_fifo_rd_en          = 1'b0;
     
     m_axis_dm_s2mm_cmd_tvalid = 1'b0;
-    m_axis_dm_s2mm_cmd_tdata  = {8'b0, 6'b0, s3_wr_op.target_address, 10'h0, 1'b0, 1'b1, 6'b0, 1'b1, DM_BTT};
+    //                                  HBM HIGH SIDE (1'b1) + 23 bit target_address + 10 bit size padding
+    m_axis_dm_s2mm_cmd_tdata  = {8'b0, 6'b0, {1'b1 , s3_wr_op.target_address , 10'h0 }, 1'b0, 1'b1, 6'b0, 1'b1, DM_BTT};
     
+    //  NEW KEY WRITE IN KEY CACHE
+    m_axi_awaddr  [0] = { 1'b0 , s3_wr_op.target_address, 10'h0 };
+    m_axi_wdata   [0][127-:32] = '0;
+    m_axi_wdata   [0][32+:KEY_WIDTH] = s3_wr_op.meta.key;
+    m_axi_wdata   [0][31:0] = VALID_TAG;
+    m_axi_wstrb   [0] = '1;
+    m_axi_awburst [0] = 2'b1; 
+    m_axi_awsize  [0] = 3'b100;
+    m_axi_awlen   [0] = 4'b0;
+    m_axi_awid    [0] = 4'b1;
+
+    // AW HANDSHAKE
+    m_axi_awvalid[0] = 1'b0;
+    // W HANDSHAKE
+    m_axi_wvalid[0]  = 1'b0;
+    m_axi_wlast[0] = 1'b0;
+    // B HANDSHAKE
+    m_axi_bready[0]  = 1'b0;
+
     s3_wr_fifo_wr_en          = 1'b0; 
     s3_wr_buff_din            = s3_wr_op;
 
@@ -483,10 +517,38 @@ module hash_engine_pipe_simple # (
           
           if (s2_wr_buff_dout.invalid_target) begin
              s3_wr_state_next = S3_WR_SINK_CMD;
+          end else if (s2_wr_buff_dout.new_write) begin
+              s3_wr_state_next = S3_WR_KEY;
           end else begin
              s3_wr_state_next = S3_WR_CMD;
           end
         end
+      end
+
+      // this non pipelined key write is absolutely not optimal but:
+      // 1) new key write is a rare occurence
+      // 2) the architecture mades easy to move this to another dual stage pipeline parellel to this stage
+      // 3) TODO: move wr key logic to a dedicated pipeline
+      S3_WR_KEY : begin
+        m_axi_awvalid[0] = 1'b1;
+        if (m_axi_awready[0] == 1'b1) begin
+            s3_wr_state_next = S3_WAIT_W_KEY;
+        end else s3_wr_state_next = S3_WR_KEY;
+      end
+
+      S3_WAIT_W_KEY : begin 
+        m_axi_wvalid[0] = 1'b1;
+        m_axi_wlast[0] = 1'b1;
+        if (m_axi_wready[0] == 1'b1) begin
+            s3_wr_state_next = S3_WAIT_B_KEY;
+        end else s3_wr_state_next = S3_WAIT_W_KEY;
+      end
+
+      S3_WAIT_B_KEY : begin 
+        m_axi_bready[0] = 1'b1;
+        if (m_axi_bvalid[0] == 1'b1) begin
+            s3_wr_state_next = S3_WR_CMD;
+        end else s3_wr_state_next = S3_WAIT_B_KEY;
       end
 
       S3_WR_CMD: begin
@@ -853,9 +915,9 @@ module hash_engine_pipe_simple # (
     // Monitor Commands & AXI
     always @(posedge clk) begin
       if (m_axis_dm_mm2s_cmd_tvalid && m_axis_dm_mm2s_cmd_tready)
-        $display("[%t] CUCKOO [HT: %d] MM2S CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_mm2s_cmd_tdata, {s3_rd_op.target_address, 10'h0});
+        $display("[%t] CUCKOO [HT: %d] MM2S CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_mm2s_cmd_tdata, {1'b1, s3_rd_op.target_address, 10'h0});
       if (m_axis_dm_s2mm_cmd_tvalid && m_axis_dm_s2mm_cmd_tready)
-        $display("[%t] CUCKOO [HT: %d] S2MM CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_s2mm_cmd_tdata, {s3_wr_op.target_address, 10'h0});
+        $display("[%t] CUCKOO [HT: %d] S2MM CMD: cmd=0x%h addr=0x%h", $time, THREAD, m_axis_dm_s2mm_cmd_tdata, {1'b1, s3_wr_op.target_address, 10'h0});
 
       for (int j = 0; j < NUM_FUNCTIONS; j++) begin
         if (m_axi_arvalid[j] && m_axi_arready[j])

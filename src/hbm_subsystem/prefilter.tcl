@@ -131,8 +131,6 @@ set bCheckIPs 1
 if { $bCheckIPs == 1 } {
    set list_check_ips "\ 
 xilinx.com:ip:axi_datamover:5.1\
-xilinx.com:ip:system_ila:1.1\
-xilinx.com:ip:smartconnect:1.0\
 "
 
    set list_ips_missing ""
@@ -253,150 +251,22 @@ proc create_root_design { parentCell } {
    CONFIG.FREQ_HZ {250000000} \
    ] $m_axis_dm_mm2s_status
 
-  set s_axi_2 [ create_bd_intf_port -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi_2 ]
-  set_property -dict [ list \
-   CONFIG.ADDR_WIDTH {34} \
-   CONFIG.ARUSER_WIDTH {0} \
-   CONFIG.AWUSER_WIDTH {0} \
-   CONFIG.BUSER_WIDTH {0} \
-   CONFIG.DATA_WIDTH {256} \
-   CONFIG.FREQ_HZ {250000000} \
-   CONFIG.HAS_BRESP {1} \
-   CONFIG.HAS_BURST {1} \
-   CONFIG.HAS_CACHE {0} \
-   CONFIG.HAS_LOCK {0} \
-   CONFIG.HAS_PROT {0} \
-   CONFIG.HAS_QOS {0} \
-   CONFIG.HAS_REGION {0} \
-   CONFIG.HAS_RRESP {1} \
-   CONFIG.HAS_WSTRB {1} \
-   CONFIG.ID_WIDTH {6} \
-   CONFIG.MAX_BURST_LENGTH {16} \
-   CONFIG.NUM_READ_OUTSTANDING {2} \
-   CONFIG.NUM_READ_THREADS {1} \
-   CONFIG.NUM_WRITE_OUTSTANDING {2} \
-   CONFIG.NUM_WRITE_THREADS {1} \
-   CONFIG.PROTOCOL {AXI4} \
-   CONFIG.READ_WRITE_MODE {READ_WRITE} \
-   CONFIG.RUSER_BITS_PER_BYTE {0} \
-   CONFIG.RUSER_WIDTH {0} \
-   CONFIG.SUPPORTS_NARROW_BURST {1} \
-   CONFIG.WUSER_BITS_PER_BYTE {0} \
-   CONFIG.WUSER_WIDTH {0} \
-   ] $s_axi_2
-
-  set s_axi_1 [ create_bd_intf_port -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi_1 ]
-  set_property -dict [ list \
-   CONFIG.ADDR_WIDTH {34} \
-   CONFIG.ARUSER_WIDTH {0} \
-   CONFIG.AWUSER_WIDTH {0} \
-   CONFIG.BUSER_WIDTH {0} \
-   CONFIG.DATA_WIDTH {256} \
-   CONFIG.FREQ_HZ {250000000} \
-   CONFIG.HAS_BRESP {1} \
-   CONFIG.HAS_BURST {1} \
-   CONFIG.HAS_CACHE {0} \
-   CONFIG.HAS_LOCK {0} \
-   CONFIG.HAS_PROT {0} \
-   CONFIG.HAS_QOS {0} \
-   CONFIG.HAS_REGION {0} \
-   CONFIG.HAS_RRESP {1} \
-   CONFIG.HAS_WSTRB {1} \
-   CONFIG.ID_WIDTH {6} \
-   CONFIG.MAX_BURST_LENGTH {16} \
-   CONFIG.NUM_READ_OUTSTANDING {2} \
-   CONFIG.NUM_READ_THREADS {1} \
-   CONFIG.NUM_WRITE_OUTSTANDING {2} \
-   CONFIG.NUM_WRITE_THREADS {1} \
-   CONFIG.PROTOCOL {AXI4} \
-   CONFIG.READ_WRITE_MODE {READ_WRITE} \
-   CONFIG.RUSER_BITS_PER_BYTE {0} \
-   CONFIG.RUSER_WIDTH {0} \
-   CONFIG.SUPPORTS_NARROW_BURST {1} \
-   CONFIG.WUSER_BITS_PER_BYTE {0} \
-   CONFIG.WUSER_WIDTH {0} \
-   ] $s_axi_1
-
-  set s_axi_3 [ create_bd_intf_port -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi_3 ]
-  set_property -dict [ list \
-   CONFIG.ADDR_WIDTH {34} \
-   CONFIG.ARUSER_WIDTH {0} \
-   CONFIG.AWUSER_WIDTH {0} \
-   CONFIG.BUSER_WIDTH {0} \
-   CONFIG.DATA_WIDTH {256} \
-   CONFIG.FREQ_HZ {250000000} \
-   CONFIG.HAS_BRESP {1} \
-   CONFIG.HAS_BURST {1} \
-   CONFIG.HAS_CACHE {0} \
-   CONFIG.HAS_LOCK {0} \
-   CONFIG.HAS_PROT {0} \
-   CONFIG.HAS_QOS {0} \
-   CONFIG.HAS_REGION {0} \
-   CONFIG.HAS_RRESP {1} \
-   CONFIG.HAS_WSTRB {1} \
-   CONFIG.ID_WIDTH {6} \
-   CONFIG.MAX_BURST_LENGTH {16} \
-   CONFIG.NUM_READ_OUTSTANDING {2} \
-   CONFIG.NUM_READ_THREADS {1} \
-   CONFIG.NUM_WRITE_OUTSTANDING {2} \
-   CONFIG.NUM_WRITE_THREADS {1} \
-   CONFIG.PROTOCOL {AXI4} \
-   CONFIG.READ_WRITE_MODE {READ_WRITE} \
-   CONFIG.RUSER_BITS_PER_BYTE {0} \
-   CONFIG.RUSER_WIDTH {0} \
-   CONFIG.SUPPORTS_NARROW_BURST {1} \
-   CONFIG.WUSER_BITS_PER_BYTE {0} \
-   CONFIG.WUSER_WIDTH {0} \
-   ] $s_axi_3
-
-  set s_axi_0 [ create_bd_intf_port -mode Slave -vlnv xilinx.com:interface:aximm_rtl:1.0 s_axi_0 ]
-  set_property -dict [ list \
-   CONFIG.ADDR_WIDTH {34} \
-   CONFIG.ARUSER_WIDTH {0} \
-   CONFIG.AWUSER_WIDTH {0} \
-   CONFIG.BUSER_WIDTH {0} \
-   CONFIG.DATA_WIDTH {256} \
-   CONFIG.FREQ_HZ {250000000} \
-   CONFIG.HAS_BRESP {1} \
-   CONFIG.HAS_BURST {1} \
-   CONFIG.HAS_CACHE {0} \
-   CONFIG.HAS_LOCK {0} \
-   CONFIG.HAS_PROT {0} \
-   CONFIG.HAS_QOS {0} \
-   CONFIG.HAS_REGION {0} \
-   CONFIG.HAS_RRESP {1} \
-   CONFIG.HAS_WSTRB {1} \
-   CONFIG.ID_WIDTH {6} \
-   CONFIG.MAX_BURST_LENGTH {16} \
-   CONFIG.NUM_READ_OUTSTANDING {2} \
-   CONFIG.NUM_READ_THREADS {1} \
-   CONFIG.NUM_WRITE_OUTSTANDING {2} \
-   CONFIG.NUM_WRITE_THREADS {1} \
-   CONFIG.PROTOCOL {AXI4} \
-   CONFIG.READ_WRITE_MODE {READ_WRITE} \
-   CONFIG.RUSER_BITS_PER_BYTE {0} \
-   CONFIG.RUSER_WIDTH {0} \
-   CONFIG.SUPPORTS_NARROW_BURST {1} \
-   CONFIG.WUSER_BITS_PER_BYTE {0} \
-   CONFIG.WUSER_WIDTH {0} \
-   ] $s_axi_0
-
-  set M00_AXI_0 [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M00_AXI_0 ]
+  set M00_AXI_1 [ create_bd_intf_port -mode Master -vlnv xilinx.com:interface:aximm_rtl:1.0 M00_AXI_1 ]
   set_property -dict [ list \
    CONFIG.ADDR_WIDTH {34} \
    CONFIG.DATA_WIDTH {512} \
    CONFIG.FREQ_HZ {250000000} \
-   CONFIG.NUM_READ_OUTSTANDING {4} \
-   CONFIG.NUM_WRITE_OUTSTANDING {4} \
+   CONFIG.NUM_READ_OUTSTANDING {64} \
+   CONFIG.NUM_WRITE_OUTSTANDING {64} \
    CONFIG.PROTOCOL {AXI4} \
-   ] $M00_AXI_0
+   ] $M00_AXI_1
 
 
   # Create ports
   set axi_resetn [ create_bd_port -dir I axi_resetn ]
   set axi_clk [ create_bd_port -dir I -type clk -freq_hz 250000000 axi_clk ]
   set_property -dict [ list \
-   CONFIG.ASSOCIATED_BUSIF {s_axis_dm_s2mm:s_axis_dm_s2mm_cmd:s_axis_dm_mm2s_cmd:m_axis_dm_mm2s:m_axis_dm_s2mm_status:m_axis_dm_mm2s_status:s_axi_2:s_axi_1:s_axi_3:s_axi_0:M00_AXI_0} \
+   CONFIG.ASSOCIATED_BUSIF {s_axis_dm_s2mm:s_axis_dm_s2mm_cmd:s_axis_dm_mm2s_cmd:m_axis_dm_mm2s:m_axis_dm_s2mm_status:m_axis_dm_mm2s_status:M00_AXI_1} \
    CONFIG.CLK_DOMAIN {hbm_bd_0_0_axi_aclk} \
  ] $axi_clk
 
@@ -409,9 +279,9 @@ proc create_root_design { parentCell } {
     CONFIG.c_include_mm2s_dre {false} \
     CONFIG.c_include_s2mm_dre {false} \
     CONFIG.c_m_axi_mm2s_data_width {512} \
-    CONFIG.c_m_axi_mm2s_id_width {0} \
+    CONFIG.c_m_axi_mm2s_id_width {4} \
     CONFIG.c_m_axi_s2mm_data_width {512} \
-    CONFIG.c_m_axi_s2mm_id_width {0} \
+    CONFIG.c_m_axi_s2mm_id_width {4} \
     CONFIG.c_m_axis_mm2s_tdata_width {512} \
     CONFIG.c_mm2s_btt_used {23} \
     CONFIG.c_mm2s_burst_size {64} \
@@ -424,67 +294,29 @@ proc create_root_design { parentCell } {
   ] $axi_datamover_0
 
 
-  # Create instance: system_ila_0, and set properties
-  set system_ila_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 system_ila_0 ]
-  set_property -dict [list \
-    CONFIG.C_DATA_DEPTH {1024} \
-    CONFIG.C_NUM_MONITOR_SLOTS {1} \
-    CONFIG.C_SLOT {0} \
-    CONFIG.C_SLOT_0_MAX_RD_BURSTS {4} \
-    CONFIG.C_SLOT_0_MAX_WR_BURSTS {4} \
-  ] $system_ila_0
-
-
-  # Create instance: smartconnect_0, and set properties
-  set smartconnect_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_0 ]
-  set_property CONFIG.NUM_SI {4} $smartconnect_0
-
-
-  # Create instance: smartconnect_1, and set properties
-  set smartconnect_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_1 ]
-
-  set_property -dict [ list CONFIG.ADVANCED_PROPERTIES {__view__ {functional {S01_Entry {PRIORITY_ARB 1}}}} ] [get_bd_cells $smartconnect_1]
-
   # Create interface connections
   connect_bd_intf_net -intf_net S_AXIS_MM2S_CMD_0_1 [get_bd_intf_ports s_axis_dm_mm2s_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_MM2S_CMD]
   connect_bd_intf_net -intf_net S_AXIS_S2MM_0_1 [get_bd_intf_ports s_axis_dm_s2mm] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM]
   connect_bd_intf_net -intf_net S_AXIS_S2MM_CMD_0_1 [get_bd_intf_ports s_axis_dm_s2mm_cmd] [get_bd_intf_pins axi_datamover_0/S_AXIS_S2MM_CMD]
-  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI [get_bd_intf_pins axi_datamover_0/M_AXI] [get_bd_intf_pins smartconnect_1/S01_AXI]
+  connect_bd_intf_net -intf_net axi_datamover_0_M_AXI [get_bd_intf_ports M00_AXI_1] [get_bd_intf_pins axi_datamover_0/M_AXI]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S [get_bd_intf_ports m_axis_dm_mm2s] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_MM2S_STS [get_bd_intf_ports m_axis_dm_mm2s_status] [get_bd_intf_pins axi_datamover_0/M_AXIS_MM2S_STS]
   connect_bd_intf_net -intf_net axi_datamover_0_M_AXIS_S2MM_STS [get_bd_intf_ports m_axis_dm_s2mm_status] [get_bd_intf_pins axi_datamover_0/M_AXIS_S2MM_STS]
-  connect_bd_intf_net -intf_net s_axi_0_1 [get_bd_intf_ports s_axi_0] [get_bd_intf_pins smartconnect_0/S00_AXI]
-  connect_bd_intf_net -intf_net s_axi_1_1 [get_bd_intf_ports s_axi_1] [get_bd_intf_pins smartconnect_0/S01_AXI]
-  connect_bd_intf_net -intf_net s_axi_2_1 [get_bd_intf_ports s_axi_2] [get_bd_intf_pins smartconnect_0/S03_AXI]
-  connect_bd_intf_net -intf_net s_axi_3_1 [get_bd_intf_ports s_axi_3] [get_bd_intf_pins smartconnect_0/S02_AXI]
-  connect_bd_intf_net -intf_net smartconnect_0_M00_AXI [get_bd_intf_pins smartconnect_0/M00_AXI] [get_bd_intf_pins smartconnect_1/S00_AXI]
-  connect_bd_intf_net -intf_net smartconnect_1_M00_AXI [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins smartconnect_1/M00_AXI]
-connect_bd_intf_net -intf_net [get_bd_intf_nets smartconnect_1_M00_AXI] [get_bd_intf_ports M00_AXI_0] [get_bd_intf_pins system_ila_0/SLOT_0_AXI]
 
   # Create port connections
   connect_bd_net -net aclk_0_1  [get_bd_ports axi_clk] \
   [get_bd_pins axi_datamover_0/m_axi_mm2s_aclk] \
   [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aclk] \
   [get_bd_pins axi_datamover_0/m_axi_s2mm_aclk] \
-  [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_awclk] \
-  [get_bd_pins system_ila_0/clk] \
-  [get_bd_pins smartconnect_0/aclk] \
-  [get_bd_pins smartconnect_1/aclk]
+  [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_awclk]
   connect_bd_net -net axi_aresetn_0  [get_bd_ports axi_resetn] \
   [get_bd_pins axi_datamover_0/m_axi_mm2s_aresetn] \
   [get_bd_pins axi_datamover_0/m_axis_s2mm_cmdsts_aresetn] \
   [get_bd_pins axi_datamover_0/m_axi_s2mm_aresetn] \
-  [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aresetn] \
-  [get_bd_pins system_ila_0/resetn] \
-  [get_bd_pins smartconnect_0/aresetn] \
-  [get_bd_pins smartconnect_1/aresetn]
+  [get_bd_pins axi_datamover_0/m_axis_mm2s_cmdsts_aresetn]
 
   # Create address segments
-  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces axi_datamover_0/Data] [get_bd_addr_segs M00_AXI_0/Reg] -force
-  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces s_axi_0] [get_bd_addr_segs M00_AXI_0/Reg] -force
-  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces s_axi_1] [get_bd_addr_segs M00_AXI_0/Reg] -force
-  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces s_axi_2] [get_bd_addr_segs M00_AXI_0/Reg] -force
-  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces s_axi_3] [get_bd_addr_segs M00_AXI_0/Reg] -force
+  assign_bd_address -offset 0x00000000 -range 0x000400000000 -target_address_space [get_bd_addr_spaces axi_datamover_0/Data] [get_bd_addr_segs M00_AXI_1/Reg] -force
 
 
   # Restore current instance
