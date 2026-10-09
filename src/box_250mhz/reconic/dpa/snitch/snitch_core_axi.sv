@@ -141,7 +141,6 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
   reqrsp_rsp_t   data_rsp_i;
 
   // core <-> acc 
-  logic          caq_valid_i;
   logic          acc_qvalid_o;
   logic          acc_qready_i;
   logic          acc_pvalid_i;
@@ -221,25 +220,25 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .inst_data_i      (inst_data_i),
     .inst_valid_o     (inst_valid_o),
     .inst_ready_i     (inst_ready_i),
-    // we don't use any accelerator, only the integer core
+    // acc bus goes to the external muldiv unit and fp unit
     .acc_qreq_o       (acc_req_o),
     .acc_qvalid_o     (acc_qvalid_o),
     .acc_qready_i     (acc_qready_i),
     .acc_prsp_i       (acc_resp_i),
     .acc_pvalid_i     (acc_pvalid_i),
     .acc_pready_o     (acc_pready_o),
-    .caq_pvalid_i     (caq_valid_i),
+    .caq_pvalid_i     ('0),
     // data req_rsp channel
     .data_req_o       (data_req_o),
     .data_rsp_i       (data_rsp_i),
-    // we don't use address translaction
+    // we don't use address translaction (no ptw)
     .ptw_valid_o      (),
     .ptw_ready_i      ('0),
     .ptw_va_o         (),
     .ptw_ppn_o        (),
     .ptw_pte_i        ('0),
     .ptw_is_4mega_i   ('0),
-    // we don't use fpu at the moment
+    // fpu settings out and status in
     .fpu_rnd_mode_o   (fpu_rnd_mode),
     .fpu_fmt_mode_o   (fpu_fmt_mode),
     .fpu_status_i     (fpu_status),
@@ -282,7 +281,7 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
     .FILL_DW            ( DataWidth        ),
     .SERIAL_LOOKUP      ( 0                ),
     .L1_TAG_SCM         ( 0                ),
-    .NUM_AXI_OUTSTANDING( 1                ),
+    .NUM_AXI_OUTSTANDING( 2                ),
     .EARLY_LATCH        ( 0                ),
     .L0_EARLY_TAG_WIDTH ( snitch_pkg::PageShift - $clog2(ICacheLineWidth/8) ),
     .ISO_CROSSING       ( IsoCrossing     ),
@@ -336,81 +335,97 @@ module snitch_core_axi import snitch_pkg::*; import fpnew_pkg::*; import riscv_i
 // Snitch FPU sequencer and FPU instance
   reqrsp_req_t   data_fpu_req_o;
   reqrsp_rsp_t   data_fpu_rsp_i;
-  // if necessary we can run the fpu at a different clock, will need to resync the axi channels in this case
+// if necessary we can run the fpu at a different clock, will need to resync the axi channels in this case
 
+// -------------------------------------------------
+// FPU signals tie off, remove to re-enable the fpu
+
+assign acc_fpu_pvalid = '0;
+assign acc_fpu_qready = '0;
+assign acc_fpu_resp   = '0;
+
+assign data_fpu_req_o = '0;
+
+assign fpu_events = '0;  
+assign fpu_trace  = '0;
+assign fpu_ss_trace = '0;
+assign fpu_status = '0;
+
+
+// --------------------------------------------------
   
- logic fpu_clk;
-clk_int_div_static #(
-  .DIV_VALUE (2),
-  .ENABLE_CLOCK_IN_RESET ('1)
-)i_clk_div(
-  .clk_i,
-  .rst_ni,
-  .en_i ('1),
-  .test_mode_en_i ('0),
-  .clk_o(fpu_clk)
-);
-snitch_fp_ss #(
-  .DataWidth  (DataWidth),
-  .AddrWidth  (AddrWidth),
-  .NumFPOutstandingLoads (NumFPOutstandingLoads),
-  .NumFPOutstandingMem (NumFPOutstandingMem),
-  .NumFPUSequencerInstr (NumFPUSequencerInstr),
-  .dreq_t (reqrsp_req_t),
-  .drsp_t (reqrsp_rsp_t),
-  .acc_req_t (acc_req_t),
-  .acc_resp_t (acc_resp_t),
-  .Xssr (Xssr),
-  .Xfrep (Xfrep),
-  .RVF (RVF),
-  .RVD (RVD),
-  .XF16 (XF16),
-  .XF16ALT (XF16ALT),
-  .XF8 (XF8),
-  .XF8ALT (XF8ALT),
-  .XFVEC (XFVEC),
-  .FPUImplementation(FPUImplementation)
-) i_snitch_fp_ss (
-  .clk_i                      (clk_i),
-  .rst_i                      (~rst_ni),
-  // pragma translate_off
-  .trace_port_o               (fpu_trace),
-  .sequencer_tracer_port_o    (fpu_ss_trace),
-  // pragma translate_on
-  .hart_id_i                  (hart_id_i),
-  // aac inteface - fpu side  
-  .acc_req_i                  (acc_req_o),
-  .acc_req_valid_i            (acc_fpu_qvalid),
-  .acc_req_ready_o            (acc_fpu_qready),
-  .acc_resp_o                 (acc_fpu_resp),
-  .acc_resp_valid_o           (acc_fpu_pvalid),
-  .acc_resp_ready_i           (acc_fpu_pready),
-  // fpu lsu        
-  .data_req_o                 (data_fpu_req_o),
-  .data_rsp_i                 (data_fpu_rsp_i),
-  // fpu channel        
-  .fpu_rnd_mode_i             (fpu_rnd_mode),
-  .fpu_fmt_mode_i             (fpu_fmt_mode),
-  .fpu_status_o               (fpu_status),
-  // ssr        
-  .ssr_raddr_o                (),
-  .ssr_rdata_i                ('0),
-  .ssr_rvalid_o               (),
-  .ssr_rready_i               ('0),
-  .ssr_rdone_o                (),
-  .ssr_waddr_o                (),
-  .ssr_wdata_o                (),
-  .ssr_wvalid_o               (),
-  .ssr_wready_i               ('0),
-  .ssr_wdone_o                (),
-  // ssr control        
-  .streamctl_done_i           ('0),
-  .streamctl_valid_i          ('0),
-  .streamctl_ready_o          (),
-  // caqq       
-  .caq_pvalid_o               (caq_valid_i),
-  .core_events_o              (fpu_events)
-);
+//     logic fpu_clk;
+//    clk_int_div_static #(
+//      .DIV_VALUE (2),
+//      .ENABLE_CLOCK_IN_RESET ('1)
+//    )i_clk_div(
+//      .clk_i,
+//      .rst_ni,
+//      .en_i ('1),
+//      .test_mode_en_i ('0),
+//      .clk_o(fpu_clk)
+//    );
+//    snitch_fp_ss #(
+//      .DataWidth  (DataWidth),
+//      .AddrWidth  (AddrWidth),
+//      .NumFPOutstandingLoads (NumFPOutstandingLoads),
+//      .NumFPOutstandingMem (NumFPOutstandingMem),
+//      .NumFPUSequencerInstr (NumFPUSequencerInstr),
+//      .dreq_t (reqrsp_req_t),
+//      .drsp_t (reqrsp_rsp_t),
+//      .acc_req_t (acc_req_t),
+//      .acc_resp_t (acc_resp_t),
+//      .Xssr (Xssr),
+//      .Xfrep (Xfrep),
+//      .RVF (RVF),
+//      .RVD (RVD),
+//      .XF16 (XF16),
+//      .XF16ALT (XF16ALT),
+//      .XF8 (XF8),
+//      .XF8ALT (XF8ALT),
+//      .XFVEC (XFVEC),
+//      .FPUImplementation(FPUImplementation)
+//    ) i_snitch_fp_ss (
+//      .clk_i                      (clk_i),
+//      .rst_i                      (~rst_ni),
+//      // pragma translate_off
+//      .trace_port_o               (fpu_trace),
+//      .sequencer_tracer_port_o    (fpu_ss_trace),
+//      // pragma translate_on
+//      .hart_id_i                  (hart_id_i),
+//      // aac inteface - fpu side  
+//      .acc_req_i                  (acc_req_o),
+//      .acc_req_valid_i            (acc_fpu_qvalid),
+//      .acc_req_ready_o            (acc_fpu_qready),
+//      .acc_resp_o                 (acc_fpu_resp),
+//      .acc_resp_valid_o           (acc_fpu_pvalid),
+//      .acc_resp_ready_i           (acc_fpu_pready),
+//      // fpu lsu        
+//      .data_req_o                 (data_fpu_req_o),
+//      .data_rsp_i                 (data_fpu_rsp_i),
+//      // fpu channel        
+//      .fpu_rnd_mode_i             (fpu_rnd_mode),
+//      .fpu_fmt_mode_i             (fpu_fmt_mode),
+//      .fpu_status_o               (fpu_status),
+//      // ssr        
+//      .ssr_raddr_o                (),
+//      .ssr_rdata_i                ('0),
+//      .ssr_rvalid_o               (),
+//      .ssr_rready_i               ('0),
+//      .ssr_rdone_o                (),
+//      .ssr_waddr_o                (),
+//      .ssr_wdata_o                (),
+//      .ssr_wvalid_o               (),
+//      .ssr_wready_i               ('0),
+//      .ssr_wdone_o                (),
+//      // ssr control        
+//      .streamctl_done_i           ('0),
+//      .streamctl_valid_i          ('0),
+//      .streamctl_ready_o          (),
+//      // caqq       
+//      .caq_pvalid_o               (caq_valid_i),
+//      .core_events_o              (fpu_events)
+//    );
 
 // muldiv unit and req spill register
   spill_register  #(

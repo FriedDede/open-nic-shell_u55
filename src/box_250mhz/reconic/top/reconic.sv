@@ -518,7 +518,8 @@ compute_logic_wrapper #(
   .AXIL_ADDR_WIDTH(AXIL_REG_ADDR_WIDTH),
   .AXIL_DATA_WIDTH(AXIL_DATA_WIDTH),
   .AXIS_DATA_WIDTH(AXIS_DATA_WIDTH),
-  .AXIS_KEEP_WIDTH(AXIS_KEEP_WIDTH)
+  .AXIS_KEEP_WIDTH(AXIS_KEEP_WIDTH),
+  .ENABLE_CACHE(1'b0)
 ) compute_logic_inst (
   .s_axil_awvalid(s_axil_cl_reg_awvalid),
   .s_axil_awaddr (s_axil_cl_reg_awaddr),
@@ -574,6 +575,13 @@ compute_logic_wrapper #(
   .m_axi_dram_rready  (m_axi_compute_logic_rready),
   .m_axi_dram_arlock  (m_axi_compute_logic_arlock),
   .m_axi_dram_arqos   (m_axi_compute_logic_arqos),
+  .m_axi_dram_awregion(),
+  .m_axi_dram_arregion(),
+  .m_axi_dram_awuser  (),
+  .m_axi_dram_wuser   (),
+  .m_axi_dram_aruser  (),
+  .m_axi_dram_buser   (),
+  .m_axi_dram_ruser   (),
 
   .axil_aclk (axil_aclk),
   .axil_rstn (axil_rstn),

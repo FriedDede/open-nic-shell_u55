@@ -8,9 +8,8 @@
 `include "register_interface_typedef.svh"
 
 // Compute engine wrapper:
-// @ input: core_clk
-// @ input: core_areset_n
-// @ output: 64-bit AXI channels to memory, one per memory channel
+// @ input: clk / rst
+// @ output: 64-bit AXI channels to the hbm memory, one per memory channel
 // @ output: uart ? TODO: evaluate if needed
 // This module self-contains the RISC-V compute engine and all associated peripherals
 
@@ -21,25 +20,26 @@ module compute_engine
     input clk,
     input core_areset_n,
 
-    output axim64_core2mem_req_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_req,
-    input  axim64_core2mem_resp_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_resp,
+    output  axim64_core2mem_req_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_req,
+    input   axim64_core2mem_resp_t [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2mem_resp,
 
-    input  logic          uart_rx         ,
-    output logic          uart_tx
+    output  axim64_core2mem_req_t  [dpa_pkg::DRAM_CH_NUMBER-1 : 0]  m_axim_ce2cfu_req,
+    input   axim64_core2mem_resp_t  [dpa_pkg::DRAM_CH_NUMBER-1 : 0] m_axim_ce2cfu_resp
+
+    //input  logic          uart_rx         ,
+    //output logic          uart_tx
 );
 
-localparam BOOT_ADDR            = dpa_pkg::BOOT_ADDR            ;
-localparam CORE_NUMBER          = dpa_pkg::CORE_NUMBER          ;
-localparam CLUSTER_NUMBER       = dpa_pkg::CLUSTER_NUMBER       ;
-localparam TOTAL_CORE_NUMBER    = dpa_pkg::TOTAL_CORE_NUMBER    ;
-localparam PERIF_NUMBER         = 3; // uart, timer, plic
-localparam DRAM_CH_NUMBER       = CLUSTER_NUMBER; // snitch clusters
-localparam AxiAddrWidth         = snitch_cluster_pkg::AddrWidth;            // 32
-localparam AxiDataWidth         = snitch_cluster_pkg::NarrowDataWidth;      // 64
-localparam AxiIdWidthCore       = snitch_cluster_pkg::NarrowIdWidthIn;      // 4 
-localparam AxiIdWidthToUncore   = AxiIdWidthCore + $clog2(3 * CORE_NUMBER);  // 4 + 2 (each core exposes 3 channels)
-localparam AxiIdWidthToPerifs   = AxiIdWidthToUncore + $clog2(CLUSTER_NUMBER); 
-localparam AxiUserWidth         = snitch_cluster_pkg::NarrowUserWidth;
+localparam BOOT_ADDR            = dpa_pkg::BOOT_ADDR         ;
+localparam CORE_NUMBER          = dpa_pkg::CORE_NUMBER       ;
+localparam CLUSTER_NUMBER       = dpa_pkg::CLUSTER_NUMBER    ;
+localparam TOTAL_CORE_NUMBER    = dpa_pkg::TOTAL_CORE_NUMBER ;
+localparam DRAM_CH_NUMBER       = dpa_pkg::DRAM_CH_NUMBER    ;
+localparam AxiAddrWidth         = dpa_pkg::ce_AddrWidth      ;
+localparam AxiDataWidth         = dpa_pkg::ce_DataWidth      ;
+localparam AxiIdWidthCore       = dpa_pkg::ce_IdWidthCore    ;
+localparam AxiIdWidthToUncore   = dpa_pkg::ce_IdWidthToUncore;
+localparam AxiUserWidth         = dpa_pkg::ce_UserWidth      ;
 
 // xbar config
 localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
@@ -51,27 +51,11 @@ localparam axi_pkg::xbar_cfg_t xbar_cfg = '{
     LatencyMode:        axi_pkg::CUT_ALL_PORTS,
     PipelineStages:     1,
     AxiIdWidthSlvPorts: AxiIdWidthCore,
-    AxiIdUsedSlvPorts:  2,
+    AxiIdUsedSlvPorts:  AxiIdWidthCore,
     UniqueIds:          '0,
     AxiAddrWidth:       AxiAddrWidth,
     AxiDataWidth:       AxiDataWidth,
     NoAddrRules:        4
-};
-// peripherals xbar setting
-localparam axi_pkg::xbar_cfg_t perif_xbar_cfg = '{
-    NoSlvPorts:         CLUSTER_NUMBER,
-    NoMstPorts:         PERIF_NUMBER,
-    MaxMstTrans:        16,
-    MaxSlvTrans:        16,
-    FallThrough:        1'b0,
-    LatencyMode:        axi_pkg::CUT_ALL_PORTS,
-    PipelineStages:     1,
-    AxiIdWidthSlvPorts: AxiIdWidthToUncore,
-    AxiIdUsedSlvPorts:  AxiIdWidthToUncore,
-    UniqueIds:          '0,
-    AxiAddrWidth:       AxiAddrWidth,
-    AxiDataWidth:       AxiDataWidth,
-    NoAddrRules:        PERIF_NUMBER
 };
 
 // generate the address map
@@ -88,14 +72,14 @@ function rule_t [3:0] addr_map_gen ();
     addr_map_gen[1] = rule_t'{
         idx:        unsigned'(1),
         start_addr: 32'h8000_0000,
-        end_addr:   32'h8000_0000 + 32'h2000_0000, // 512MB per cluster here
+        end_addr:   32'h8000_0000 + 32'h8000_0000, // 2GB per cluster here
         default:    '0
     };
-    // Perif (PLIC UART TIMER ... )
+    // DESC BRAM
     addr_map_gen[2] = rule_t'{
         idx:        unsigned'(2),
         start_addr: 32'h1000_0000,
-        end_addr:   32'h8000_0000,
+        end_addr:   32'h2000_0000, // 256MB aperture
         default:    '0
     };
     // CLINT (Pulp Specs RISC-V privilege spec 1.11 compatible CLINT )
@@ -107,33 +91,9 @@ function rule_t [3:0] addr_map_gen ();
     };
 endfunction
 
-function rule_t [PERIF_NUMBER - 1 : 0] addr_map_perif_gen ();
-    // PLIC
-    addr_map_perif_gen[0] = rule_t'{
-        idx:        unsigned'(0),
-        start_addr: 32'h1000_0000,
-        end_addr:   32'h1400_0000,
-        default:    '0
-    };
-    // Uart
-    addr_map_perif_gen[1] = rule_t'{
-        idx:        unsigned'(1),
-        start_addr: 32'h1400_0000,
-        end_addr:   32'h1400_1000,
-        default:    '0
-    };
-    // Timer
-    addr_map_perif_gen[2] = rule_t'{
-        idx:        unsigned'(2),
-        start_addr: 32'h1400_1000,
-        end_addr:   32'h1400_2000,
-        default:    '0
-    };
-
-endfunction
 
 localparam rule_t [3:0] AddrMapUncore = addr_map_gen();
-localparam rule_t [PERIF_NUMBER - 1 : 0] AddrMapPerif = addr_map_perif_gen();
+
 AXI_BUS #(
     .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
@@ -145,13 +105,8 @@ AXI_BUS #(
     .AXI_DATA_WIDTH ( AxiDataWidth     ),
     .AXI_ID_WIDTH   ( AxiIdWidthToUncore ),
     .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_uncore2pxbar[CLUSTER_NUMBER-1:0]();
-AXI_BUS #(
-    .AXI_ADDR_WIDTH ( AxiAddrWidth     ),
-    .AXI_DATA_WIDTH ( AxiDataWidth     ),
-    .AXI_ID_WIDTH   ( AxiIdWidthToPerifs ),
-    .AXI_USER_WIDTH ( AxiUserWidth     )
-) axi_peripherals[PERIF_NUMBER - 1:0]();
+) axi_cfu[CLUSTER_NUMBER-1:0]();
+
 
 // interrupt handling bus
 snitch_pkg::interrupts_t [TOTAL_CORE_NUMBER - 1 : 0] core_irq_i;
@@ -189,7 +144,7 @@ for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin  : snitch_cluster_gen
             .clk_i                  (clk),
             .rst_ni                 (core_areset_n),
             .hart_id_i              ((j)), // id unique only in the cluster
-            .irq_i                  (core_irq_i[(i+1)*j]),
+            .irq_i                  ('0),
             // icache
             .inst_out_req_o         (axi_icache_snitch_req     ),
             .inst_out_resp_i        (axi_icache_snitch_resp    ),
@@ -247,9 +202,12 @@ for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin  : snitch_cluster_gen
     `AXI_ASSIGN(axi_dram[i], axi_xbar2uncore[1])
     `AXI_ASSIGN_TO_REQ(m_axim_ce2mem_req[i], axi_dram[i])
     `AXI_ASSIGN_FROM_RESP(axi_dram[i], m_axim_ce2mem_resp[i])
+    // to cfu
+    `AXI_ASSIGN(axi_cfu[i], axi_xbar2uncore[2])
+    `AXI_ASSIGN_TO_REQ(m_axim_ce2cfu_req[i], axi_cfu[i])
+    `AXI_ASSIGN_FROM_RESP(axi_cfu[i], m_axim_ce2cfu_resp[i])
     // to uncore
     `AXI_ASSIGN(axi_rom, axi_xbar2uncore[0])
-    `AXI_ASSIGN(axi_uncore2pxbar[i], axi_xbar2uncore[2])
     `AXI_ASSIGN(axi_clint, axi_xbar2uncore[3])
     // clint logic
     logic rtc;
@@ -309,75 +267,9 @@ for ( genvar i=0; i<CLUSTER_NUMBER; ++i) begin  : snitch_cluster_gen
         .rvalid_o   ( rom_rvalid)
     );
     // tie unused signal in bram channel to 0
-    assign axi_dram[i].b_user = '0;
-    assign axi_dram[i].r_user = '0;
+    // assign axi_dram[i].b_user = '0;
+    // assign axi_dram[i].r_user = '0;
 end
-
-// -----------------------
-// PERYPHERALS SUBSYSTEM 
-// -----------------------
-    localparam int EXT_TIMERS = 2; // 2 timers per core
-    logic [(EXT_TIMERS *2) - 1 : 0] timer_irq;
-    logic uart_irq;
-    logic [TOTAL_CORE_NUMBER : 0][1:0] plic_irq_o;
-
-    for (genvar i = 0; i < TOTAL_CORE_NUMBER; i++) begin : gen_irq
-        assign core_irq_i[i].meip = plic_irq_o[i*2];
-    end
-
-    axi_xbar_intf #(
-        .AXI_USER_WIDTH(AxiUserWidth),
-        .Cfg(perif_xbar_cfg),
-        .rule_t(rule_t)
-    ) i_axi_xbar_intf_perif (
-        .clk_i(clk),
-        .rst_ni(uncore_areset_n),
-        .test_i('0),
-        .slv_ports(axi_uncore2pxbar),
-        .mst_ports(axi_peripherals),
-        .addr_map_i(AddrMapPerif),
-        .en_default_mst_port_i('0),
-        .default_mst_port_i('0)
-    );
-    axi_uart #(
-        .AxiAddrWidth(AxiAddrWidth),
-        .AxiDataWidth(AxiDataWidth),
-        .AxiIdWidth(AxiIdWidthToPerifs),
-        .AxiUserWidth(AxiUserWidth)
-    ) axi_uart_instance(
-        .clk_i(clk),
-        .rst_ni(uncore_areset_n),
-        .uart(axi_peripherals[1]),
-        .uart_irq(uart_irq),
-        .tx_o(uart_tx),
-        .rx_i(uart_rx)
-    );
-    axi_plic #(
-        .AxiAddrWidth(AxiAddrWidth),
-        .AxiDataWidth(AxiDataWidth),
-        .AxiIdWidth(AxiIdWidthToPerifs),
-        .AxiUserWidth(AxiUserWidth),
-        .NIrqSrcs((EXT_TIMERS *2) + 1), // 2 src per timer per core + uart
-        .NHARTS(TOTAL_CORE_NUMBER)
-    ) axi_plic_instance(
-        .clk_i(clk),
-        .rst_ni(uncore_areset_n),
-        .plic(axi_peripherals[0]),
-        .plic_irq_i({uart_irq,timer_irq}),
-        .plic_irq_o(plic_irq_o)
-    );
-    axi_timer #(
-        .AxiAddrWidth(AxiAddrWidth),
-        .AxiDataWidth(AxiDataWidth),
-        .AxiIdWidth(AxiIdWidthToPerifs),
-        .AxiUserWidth(AxiUserWidth),
-        .TimerCount(EXT_TIMERS)
-    ) axi_timer_instance(
-        .clk_i(clk),
-        .rst_ni(uncore_areset_n),
-        .timer(axi_peripherals[2]),
-        .timer_irq(timer_irq)
-    );
 
 // -----------------
 // END

@@ -153,58 +153,58 @@
 //////////////////////////////////////////////////////////////
 // assign an axi req resp pair to an hbm channel, using old ariane axi
 // pat = "S00" or "S01" etc
-`define AXI_ASSIGN_MASTER_TO_HBM_ARIANE(pat, bus) \
-  assign pat``_AXI_0_awvalid  = bus.aw_valid;  \
-  assign pat``_AXI_0_awid     = bus.aw_id;     \
-  assign pat``_AXI_0_awaddr   = bus.aw_addr[30:0]; \
-  assign pat``_AXI_0_awlen    = bus.aw_len;    \
-  assign pat``_AXI_0_awsize   = bus.aw_size;   \
-  assign pat``_AXI_0_awburst  = bus.aw_burst;  \
-  assign pat``_AXI_0_awlock   = bus.aw_lock;   \
-  assign pat``_AXI_0_awcache  = bus.aw_cache;  \
-  assign pat``_AXI_0_awprot   = bus.aw_prot;   \
-  assign pat``_AXI_0_awqos    = bus.aw_qos;    \
-  assign pat``_AXI_0_awregion = bus.aw_region; \
-  assign pat``_AXI_0_awuser   = bus.aw_user;   \
+`define AXI_ASSIGN_MASTER(pat, bus) \
+  assign pat``_awvalid  = bus.aw_valid;  \
+  assign pat``_awid     = bus.aw_id;     \
+  assign pat``_awaddr   = bus.aw_addr; \
+  assign pat``_awlen    = bus.aw_len;    \
+  assign pat``_awsize   = bus.aw_size;   \
+  assign pat``_awburst  = bus.aw_burst;  \
+  assign pat``_awlock   = bus.aw_lock;   \
+  assign pat``_awcache  = bus.aw_cache;  \
+  assign pat``_awprot   = bus.aw_prot;   \
+  assign pat``_awqos    = bus.aw_qos;    \
+  assign pat``_awregion = bus.aw_region; \
+  assign pat``_awuser   = bus.aw_user;   \
                                         \
-  assign pat``_AXI_0_wvalid   = bus.w_valid;   \
-  assign pat``_AXI_0_wdata    = bus.w_data;    \
-  assign pat``_AXI_0_wstrb    = bus.w_strb;    \
-  assign pat``_AXI_0_wlast    = bus.w_last;    \
-  assign pat``_AXI_0_wuser    = bus.w_user;    \
+  assign pat``_wvalid   = bus.w_valid;   \
+  assign pat``_wdata    = bus.w_data;    \
+  assign pat``_wstrb    = bus.w_strb;    \
+  assign pat``_wlast    = bus.w_last;    \
+  assign pat``_wuser    = bus.w_user;    \
                                         \
-  assign pat``_AXI_0_bready   = bus.b_ready;   \
+  assign pat``_bready   = bus.b_ready;   \
                                         \
-  assign pat``_AXI_0_arvalid  = bus.ar_valid;  \
-  assign pat``_AXI_0_arid     = bus.ar_id;     \
-  assign pat``_AXI_0_araddr   = bus.ar_addr[30:0];\
-  assign pat``_AXI_0_arlen    = bus.ar_len;    \
-  assign pat``_AXI_0_arsize   = bus.ar_size;   \
-  assign pat``_AXI_0_arburst  = bus.ar_burst;  \
-  assign pat``_AXI_0_arlock   = bus.ar_lock;   \
-  assign pat``_AXI_0_arcache  = bus.ar_cache;  \
-  assign pat``_AXI_0_arprot   = bus.ar_prot;   \
-  assign pat``_AXI_0_arqos    = bus.ar_qos;    \
-  assign pat``_AXI_0_arregion = bus.ar_region; \
-  assign pat``_AXI_0_aruser   = bus.ar_user;   \
+  assign pat``_arvalid  = bus.ar_valid;  \
+  assign pat``_arid     = bus.ar_id;     \
+  assign pat``_araddr   = bus.ar_addr;\
+  assign pat``_arlen    = bus.ar_len;    \
+  assign pat``_arsize   = bus.ar_size;   \
+  assign pat``_arburst  = bus.ar_burst;  \
+  assign pat``_arlock   = bus.ar_lock;   \
+  assign pat``_arcache  = bus.ar_cache;  \
+  assign pat``_arprot   = bus.ar_prot;   \
+  assign pat``_arqos    = bus.ar_qos;    \
+  assign pat``_arregion = bus.ar_region; \
+  assign pat``_aruser   = bus.ar_user;   \
                                           \
-  assign pat``_AXI_0_rready   = req.r_ready;   \
-                                                 \
-  assign bus.aw_ready = pat``_AXI_0_awready;   \
-  assign bus.ar_ready = pat``_AXI_0_arready;   \
-  assign bus.w_ready  = pat``_AXI_0_wready;    \
+  assign pat``_rready   = bus.r_ready;   \
+                                          \
+  assign bus.aw_ready = pat``_awready;   \
+  assign bus.ar_ready = pat``_arready;   \
+  assign bus.w_ready  = pat``_wready;    \
                                          \
-  assign bus.b_valid  = pat``_AXI_0_bvalid;    \
-  assign bus.b_id     = pat``_AXI_0_bid;       \
-  assign bus.b_resp   = pat``_AXI_0_bresp;     \
-  assign bus.b_user   = pat``_AXI_0_buser;     \
+  assign bus.b_valid  = pat``_bvalid;    \
+  assign bus.b_id     = pat``_bid;       \
+  assign bus.b_resp   = pat``_bresp;     \
+  assign bus.b_user   = pat``_buser;     \
                                          \
-  assign bus.r_valid  = pat``_AXI_0_rvalid;    \
-  assign bus.r_id     = pat``_AXI_0_rid;       \
-  assign bus.r_data   = pat``_AXI_0_rdata;     \
-  assign bus.r_resp   = pat``_AXI_0_rresp;     \
-  assign bus.r_last   = pat``_AXI_0_rlast;     \
-  assign bus.r_user   = pat``_AXI_0_ruser;     
+  assign bus.r_valid  = pat``_rvalid;    \
+  assign bus.r_id     = pat``_rid;       \
+  assign bus.r_data   = pat``_rdata;     \
+  assign bus.r_resp   = pat``_rresp;     \
+  assign bus.r_last   = pat``_rlast;     \
+  assign bus.r_user   = pat``_ruser;     
 
 
 `endif
